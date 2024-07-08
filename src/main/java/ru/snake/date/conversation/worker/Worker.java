@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +17,7 @@ import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatMessageRole;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestBuilder;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestModel;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatResult;
+import ru.snake.bot.easydate.Replacer;
 
 public class Worker {
 
@@ -44,7 +44,7 @@ public class Worker {
 		String imageDescription = imageQuery(file, text("prompts/image_description.txt"));
 		String imageObjects = imageQuery(file, text("prompts/image_objects.txt"));
 		String initialPhrases = textQuery(
-			substitute(
+			Replacer.replace(
 				text("prompts/text_openers.txt"),
 				Map.of("image_description", imageDescription, "image_objects", imageObjects)
 			)
@@ -57,19 +57,6 @@ public class Worker {
 			trimLines(initialPhrases),
 			trimLines(translatedPhrases)
 		);
-	}
-
-	private String substitute(String text, Map<String, String> parameters) {
-		String result = text;
-
-		for (Entry<String, String> entry : parameters.entrySet()) {
-			String name = String.format("{%s}", entry.getKey());
-			String value = entry.getValue();
-
-			result = result.replace(name, value);
-		}
-
-		return result;
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
