@@ -1,0 +1,13 @@
+Come up with a few unusual phrases to start a dialogue with this girl, based on the description above.
+
+Write only phrases without introduction, ending or additional information. 
+
+Break the phrases into several categories in the following format:
+
+## Category
+
+* Phrase 1;
+* Phrase 2;
+* Phrase 3;
+* Phrase 4;
+...

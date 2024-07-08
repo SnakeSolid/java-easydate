@@ -1,0 +1,34 @@
+package ru.snake.date.conversation.worker;
+
+public class OpenersResult {
+
+	private final String description;
+
+	private final String english;
+
+	private final String russian;
+
+	public OpenersResult(final String description, final String english, final String russian) {
+		this.description = description;
+		this.english = english;
+		this.russian = russian;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public String getEnglish() {
+		return english;
+	}
+
+	public String getRussian() {
+		return russian;
+	}
+
+	@Override
+	public String toString() {
+		return "OpenersResult [description=" + description + ", english=" + english + ", russian=" + russian + "]";
+	}
+
+}
