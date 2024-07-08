@@ -78,6 +78,7 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 						OpenersResult openers = worker.writeOpeners(file);
 
 						LOG.info("Image description: {}", openers.getDescription());
+						LOG.info("Image objects: {}", openers.getObjects());
 						LOG.info("Openers english: {}", openers.getEnglish());
 						LOG.info("Openers russian: {}", openers.getRussian());
 

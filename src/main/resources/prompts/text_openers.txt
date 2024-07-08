@@ -1,6 +1,14 @@
-Come up with a few unusual phrases to start a dialogue with this girl, based on the description above.
+{image_description}
 
-Write only phrases without introduction, ending or additional information. 
+{image_objects}
+
+Create original and engaging openers for starting a conversation on a dating site, based on image description above.
+
+The openers should be: individualized, relevant, original and memorable, diverse.
+
+Important: Avoid cliches and generic phrases, create openers that encourage conversation.
+
+Write only items without introduction and conclusion.
 
 Break the phrases into several categories in the following format:
 

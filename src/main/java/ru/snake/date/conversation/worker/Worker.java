@@ -6,6 +6,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,15 +41,35 @@ public class Worker {
 
 		checkFiles(file);
 
-		String description = imageQuery(
-			file,
-			text("prompts/image_description.txt"),
-			text("prompts/image_interesting_things.txt")
+		String imageDescription = imageQuery(file, text("prompts/image_description.txt"));
+		String imageObjects = imageQuery(file, text("prompts/image_objects.txt"));
+		String initialPhrases = textQuery(
+			substitute(
+				text("prompts/text_openers.txt"),
+				Map.of("image_description", imageDescription, "image_objects", imageObjects)
+			)
 		);
-		String initialPhrases = textQuery(description, text("prompts/text_openers.txt"));
 		String translatedPhrases = textQuery(initialPhrases, text("prompts/text_translate.txt"));
 
-		return new OpenersResult(description, trimLines(initialPhrases), trimLines(translatedPhrases));
+		return new OpenersResult(
+			imageDescription,
+			imageObjects,
+			trimLines(initialPhrases),
+			trimLines(translatedPhrases)
+		);
+	}
+
+	private String substitute(String text, Map<String, String> parameters) {
+		String result = text;
+
+		for (Entry<String, String> entry : parameters.entrySet()) {
+			String name = String.format("{%s}", entry.getKey());
+			String value = entry.getValue();
+
+			result = result.replace(name, value);
+		}
+
+		return result;
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {

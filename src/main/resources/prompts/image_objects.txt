@@ -1,0 +1,3 @@
+What interesting things do you see on this image to start conversation about?
+
+Show all things as list of items with descriptions. Write only items without introduction and conclusion.
