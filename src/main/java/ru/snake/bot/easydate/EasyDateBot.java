@@ -18,6 +18,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
+import ru.snake.bot.easydate.consume.UpdateConsumer;
 import ru.snake.date.conversation.worker.OpenersResult;
 import ru.snake.date.conversation.worker.Worker;
 
@@ -41,14 +42,46 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 
 	@Override
 	public void consume(Update update) {
-		try {
-			consumeInternal(update);
-		} catch (Error e) {
-			LOG.error("Failed to process request.", e);
+		UpdateConsumer.create(whiteList)
+			.onText(this::processText)
+			.onPhotos(this::processPhotos)
+			.onCommand("/start", this::commandStart)
+			.onCommand("/help", this::commandHelp)
+			.consume(update);
+	}
 
-			// Required to stop application if runtime error occurred.
-			System.exit(0);
+	private void commandStart(final long chatId, final long userId, final String command) throws IOException {
+		sendText(chatId, Resource.asText("texts/command-start.txt"));
+	}
+
+	private void commandHelp(final long chatId, final long userId, final String command) throws IOException {
+		sendText(chatId, Resource.asText("texts/command-help.txt"));
+	}
+
+	private void processText(final long chatId, final long userId, final String text) throws Exception {
+		sendMessage(chatId, "Not implemented yet.");
+	}
+
+	private void processPhotos(final long chatId, final long userId, final List<PhotoSize> photos, final String text)
+			throws Exception {
+		PhotoSize photo = getLargePhoto(photos);
+		File file = downloadPhoto(photo);
+		file.deleteOnExit();
+
+		try {
+			OpenersResult openers = worker.writeOpeners(file);
+
+			LOG.info("Image description: {}", openers.getDescription());
+			LOG.info("Image objects: {}", openers.getObjects());
+			LOG.info("Openers english: {}", openers.getEnglish());
+			LOG.info("Openers russian: {}", openers.getRussian());
+
+			sendMessage(chatId, openers.getRussian());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
 		}
+
+		file.delete();
 	}
 
 	private void consumeInternal(Update update) {
@@ -66,7 +99,7 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 
 				sendMessage(chatId, text);
 			} else if (update.getMessage().hasPhoto()) {
-				PhotoSize photo = getLargePhoto(message);
+				PhotoSize photo = getLargePhoto(message.getPhoto());
 
 				if (photo == null) {
 					sendText(chatId, "Photos not found.");
@@ -108,8 +141,7 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 		return null;
 	}
 
-	private PhotoSize getLargePhoto(Message message) {
-		List<PhotoSize> photos = message.getPhoto();
+	private static PhotoSize getLargePhoto(final List<PhotoSize> photos) {
 		PhotoSize bestPhoto = null;
 		int averageBest = 0;
 

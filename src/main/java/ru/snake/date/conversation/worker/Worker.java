@@ -2,7 +2,6 @@ package ru.snake.date.conversation.worker;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,6 +17,7 @@ import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestBuilde
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestModel;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatResult;
 import ru.snake.bot.easydate.Replacer;
+import ru.snake.bot.easydate.Resource;
 
 public class Worker {
 
@@ -49,15 +49,15 @@ public class Worker {
 
 		checkFiles(file);
 
-		String imageDescription = imageQuery(file, text("prompts/image_description.txt"));
-		String imageObjects = imageQuery(file, text("prompts/image_objects.txt"));
+		String imageDescription = imageQuery(file, Resource.asText("prompts/image_description.txt"));
+		String imageObjects = imageQuery(file, Resource.asText("prompts/image_objects.txt"));
 		String initialPhrases = textQuery(
 			Replacer.replace(
-				text("prompts/text_openers.txt"),
+				Resource.asText("prompts/text_openers.txt"),
 				Map.of("image_description", imageDescription, "image_objects", imageObjects)
 			)
 		);
-		String translatedPhrases = textQuery(initialPhrases, text("prompts/text_translate.txt"));
+		String translatedPhrases = textQuery(initialPhrases, Resource.asText("prompts/text_translate.txt"));
 
 		return new OpenersResult(
 			imageDescription,
@@ -119,17 +119,6 @@ public class Worker {
 		LOG.info("Query result: {}", builder);
 
 		return builder.toString();
-	}
-
-	private static String text(String path) throws IOException {
-		LOG.info("Read resource: {}", path);
-
-		try (InputStream stream = ClassLoader.getSystemResourceAsStream(path)) {
-			byte[] bytes = stream.readAllBytes();
-			String text = new String(bytes);
-
-			return text;
-		}
 	}
 
 	private static String trimLines(String response) {
