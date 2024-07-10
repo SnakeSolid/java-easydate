@@ -13,7 +13,6 @@ import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
@@ -82,48 +81,6 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 		}
 
 		file.delete();
-	}
-
-	private void consumeInternal(Update update) {
-		if (update.hasMessage()) {
-			Message message = update.getMessage();
-			long userId = message.getFrom().getId();
-			long chatId = message.getChatId();
-
-			if (!whiteList.contains(userId)) {
-				sendMessage(chatId, String.format("Access denied, your ID %d.", userId));
-
-				LOG.warn("Access denied for user ID = {}.", userId);
-			} else if (update.getMessage().hasText()) {
-				String text = message.getText();
-
-				sendMessage(chatId, text);
-			} else if (update.getMessage().hasPhoto()) {
-				PhotoSize photo = getLargePhoto(message.getPhoto());
-
-				if (photo == null) {
-					sendText(chatId, "Photos not found.");
-				} else {
-					File file = downloadPhoto(photo);
-					file.deleteOnExit();
-
-					try {
-						OpenersResult openers = worker.writeOpeners(file);
-
-						LOG.info("Image description: {}", openers.getDescription());
-						LOG.info("Image objects: {}", openers.getObjects());
-						LOG.info("Openers english: {}", openers.getEnglish());
-						LOG.info("Openers russian: {}", openers.getRussian());
-
-						sendMessage(chatId, openers.getRussian());
-					} catch (OllamaBaseException | IOException | InterruptedException e) {
-						LOG.warn("Error processing image.", e);
-					}
-
-					file.delete();
-				}
-			}
-		}
 	}
 
 	private File downloadPhoto(PhotoSize photo) {
