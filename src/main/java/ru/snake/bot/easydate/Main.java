@@ -6,6 +6,7 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.spongepowered.configurate.ConfigurateException;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
@@ -16,16 +17,9 @@ import ru.snake.bot.easydate.cli.ImageCommand;
 import ru.snake.bot.easydate.cli.RootCommand;
 import ru.snake.date.conversation.worker.OpenersResult;
 import ru.snake.date.conversation.worker.Worker;
+import ru.snake.date.conversation.worker.WorkerSettings;
 
 public class Main {
-
-	private static final String DEFAULT_URI = "http://localhost:11434/";
-
-	private static final String IMAGE_MODEL_NAME = "llava-llama3";
-
-	private static final String TEXT_MODEL_NAME = "gemma2";
-
-	private static final long DEFAULT_TIMEOUT = 120;
 
 	private static final Logger LOG = LoggerFactory.getLogger(Main.class);
 
@@ -37,8 +31,8 @@ public class Main {
 		System.exit(exitCode);
 	}
 
-	private static void startImage(final File image, final String description) {
-		Worker worker = createWorker();
+	private static void startImage(final File configFile, final File image, final String description) {
+		Worker worker = createWorker(configFile);
 
 		try {
 			OpenersResult result = worker.writeOpeners(image);
@@ -57,8 +51,8 @@ public class Main {
 		}
 	}
 
-	private static void startBot(final String botToken, final Set<Long> allowUsers) {
-		Worker worker = createWorker();
+	private static void startBot(final File configFile, final String botToken, final Set<Long> allowUsers) {
+		Worker worker = createWorker(configFile);
 		EasyDateBot bot = new EasyDateBot(botToken, allowUsers, worker);
 
 		try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
@@ -73,12 +67,24 @@ public class Main {
 		}
 	}
 
-	private static Worker createWorker() {
-		return Worker.builder(DEFAULT_URI)
-			.imageModel(IMAGE_MODEL_NAME)
-			.textModel(TEXT_MODEL_NAME)
-			.timeout(DEFAULT_TIMEOUT)
-			.build();
+	private static Worker createWorker(final File configFile) {
+		WorkerSettings settings;
+
+		if (configFile == null) {
+			settings = WorkerSettings.create();
+		} else {
+			try {
+				settings = WorkerSettings.fromFile(configFile);
+			} catch (ConfigurateException e) {
+				LOG.error("Failed to load configuration.", e);
+
+				System.exit(1);
+
+				return null;
+			}
+		}
+
+		return Worker.create(settings);
 	}
 
 }

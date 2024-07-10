@@ -1,5 +1,6 @@
 package ru.snake.bot.easydate.cli;
 
+import java.io.File;
 import java.util.Set;
 
 import picocli.CommandLine.Command;
@@ -9,6 +10,9 @@ import picocli.CommandLine.Option;
 public class BotCommand implements Runnable {
 
 	private final BotCallback callback;
+
+	@Option(names = { "-c", "--config" }, description = "LLM configuration file")
+	private File config;
 
 	@Option(names = { "-t", "--bot-token" }, description = "Telegram bot access token", required = true)
 	private String botToken;
@@ -22,12 +26,13 @@ public class BotCommand implements Runnable {
 
 	@Override
 	public void run() {
-		callback.execute(botToken, allowUsers);
+		callback.execute(config, botToken, allowUsers);
 	}
 
 	@Override
 	public String toString() {
-		return "BotCommand [callback=" + callback + ", botToken=" + botToken + ", allowUsers=" + allowUsers + "]";
+		return "BotCommand [callback=" + callback + ", config=" + config + ", botToken=" + botToken + ", allowUsers="
+				+ allowUsers + "]";
 	}
 
 }

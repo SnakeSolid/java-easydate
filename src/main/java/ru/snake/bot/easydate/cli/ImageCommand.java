@@ -10,6 +10,9 @@ public class ImageCommand implements Runnable {
 
 	private final ImageCallback callback;
 
+	@Option(names = { "-c", "--config" }, description = "LLM configuration file")
+	private File config;
+
 	@Option(names = { "-i", "--image" }, description = "Path to image (write openers and exit)", required = true)
 	private File image;
 
@@ -22,12 +25,13 @@ public class ImageCommand implements Runnable {
 
 	@Override
 	public void run() {
-		callback.execute(image, description);
+		callback.execute(config, image, description);
 	}
 
 	@Override
 	public String toString() {
-		return "ImageCommand [callback=" + callback + ", image=" + image + ", description=" + description + "]";
+		return "ImageCommand [callback=" + callback + ", config=" + config + ", image=" + image + ", description="
+				+ description + "]";
 	}
 
 }

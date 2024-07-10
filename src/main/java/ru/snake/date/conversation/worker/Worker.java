@@ -23,14 +23,22 @@ public class Worker {
 
 	private static final Logger LOG = LoggerFactory.getLogger(Worker.class);
 
-	private final OllamaAPI api;
+	private final OllamaAPI imageApi;
+
+	private final OllamaAPI textApi;
 
 	private final String imageModelName;
 
 	private final String textModelName;
 
-	public Worker(final OllamaAPI api, final String imageModelName, final String textModelName) {
-		this.api = api;
+	public Worker(
+		final OllamaAPI imageApi,
+		final OllamaAPI textApi,
+		final String imageModelName,
+		final String textModelName
+	) {
+		this.imageApi = imageApi;
+		this.textApi = textApi;
 		this.imageModelName = imageModelName;
 		this.textModelName = textModelName;
 	}
@@ -71,7 +79,7 @@ public class Worker {
 		}
 
 		OllamaChatRequestModel request = builder.build();
-		OllamaChatResult chat = api.chat(request);
+		OllamaChatResult chat = textApi.chat(request);
 		String result = chat.getResponse();
 
 		LOG.info("Query result: {}", result);
@@ -93,7 +101,7 @@ public class Worker {
 		OllamaChatRequestModel request = OllamaChatRequestBuilder.getInstance(imageModelName)
 			.withMessage(OllamaChatMessageRole.USER, messages[0], List.of(file))
 			.build();
-		OllamaChatResult chat = api.chat(request);
+		OllamaChatResult chat = imageApi.chat(request);
 
 		builder.append(chat.getResponse());
 
@@ -102,7 +110,7 @@ public class Worker {
 				.withMessages(chat.getChatHistory())
 				.withMessage(OllamaChatMessageRole.USER, messages[index])
 				.build();
-			chat = api.chat(request);
+			chat = imageApi.chat(request);
 
 			builder.append("\n\n");
 			builder.append(chat.getResponse());
@@ -185,11 +193,20 @@ public class Worker {
 
 	@Override
 	public String toString() {
-		return "Worker [api=" + api + ", imageModelName=" + imageModelName + ", textModelName=" + textModelName + "]";
+		return "Worker [imageApi=" + imageApi + ", textApi=" + textApi + ", imageModelName=" + imageModelName
+				+ ", textModelName=" + textModelName + "]";
 	}
 
-	public static WorkerBuilder builder(String ollamaUri) {
-		return new WorkerBuilder(ollamaUri);
+	public static Worker create(WorkerSettings settings) {
+		OllamaAPI imageApi = new OllamaAPI(settings.getImageUri());
+		imageApi.setRequestTimeoutSeconds(settings.getTimeout());
+		imageApi.setVerbose(false);
+
+		OllamaAPI textApi = new OllamaAPI(settings.getTextUri());
+		textApi.setRequestTimeoutSeconds(settings.getTimeout());
+		textApi.setVerbose(false);
+
+		return new Worker(imageApi, textApi, settings.getImageModel(), settings.getTextModel());
 	}
 
 }

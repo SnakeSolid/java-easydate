@@ -10,6 +10,7 @@
 	<properties>
 		<logback.version>1.5.6</logback.version>
 		<picocli.version>4.7.6</picocli.version>
+		<configurate.version>4.1.2</configurate.version>
 		<ollama.version>1.0.73</ollama.version>
 		<telegrambots.version>7.4.2</telegrambots.version>
 		<junit.version>5.10.3</junit.version>
@@ -31,6 +32,11 @@
 			<groupId>info.picocli</groupId>
 			<artifactId>picocli</artifactId>
 			<version>${picocli.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.spongepowered</groupId>
+			<artifactId>configurate-hocon</artifactId>
+			<version>${configurate.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>io.github.amithkoujalgi</groupId>
