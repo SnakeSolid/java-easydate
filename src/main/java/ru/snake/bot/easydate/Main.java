@@ -39,6 +39,8 @@ public class Main {
 
 			System.out.println(result.getDescription());
 			System.out.println("--- --- --- --- --- --- --- --- --- ---");
+			System.out.println(result.getObjects());
+			System.out.println("--- --- --- --- --- --- --- --- --- ---");
 			System.out.println(result.getEnglish());
 			System.out.println("--- --- --- --- --- --- --- --- --- ---");
 			System.out.println(result.getRussian());
