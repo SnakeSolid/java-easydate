@@ -27,6 +27,7 @@ Start application using following command:
 
 ```sh
 java -jar target/easydate-0.0.1-SNAPSHOT-jar-with-dependencies.jar \
+  bot \
   --bot-token "TOKEN" \
   --allow-user ID1 \
   --allow-user ID2 \
@@ -40,7 +41,25 @@ To analyze single image and return openers for it. Use following command:
 
 ```sh
 java -jar target/easydate-0.0.1-SNAPSHOT-jar-with-dependencies.jar \
+  image \
   --image IMAGE_PATH
+```
+
+## LLM Settings
+
+By default, the local ollama server located at `http://localhost:11434/`
+is used. The `llava-llama3` model is used for image description, and the
+`gemma2` model for text generation. These settings can be changed using
+the configuration file (option `--config`).
+
+Example of configuration file with default settings:
+
+```
+uri.image   = "http://localhost:11434/"
+uri.text    = "http://localhost:11434/"
+model.image = "llava-llama3"
+model.text  = "gemma2"
+timeout     = 120
 ```
 
 ## License
