@@ -18,6 +18,13 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.message.Message;
 
+import ru.snake.bot.easydate.consume.callback.AccessDeniedAction;
+import ru.snake.bot.easydate.consume.callback.Callback;
+import ru.snake.bot.easydate.consume.callback.CommandAction;
+import ru.snake.bot.easydate.consume.callback.MessageAction;
+import ru.snake.bot.easydate.consume.callback.PhotosAction;
+import ru.snake.bot.easydate.consume.callback.PhotosDescriptionAction;
+
 public class UpdateConsumer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(UpdateConsumer.class);
@@ -28,9 +35,11 @@ public class UpdateConsumer {
 
 	private AccessDeniedAction accessDeniedAction;
 
-	private TextAction textAction;
+	private MessageAction textAction;
 
 	private PhotosAction photosAction;
+
+	private PhotosDescriptionAction photosDescriptionAction;
 
 	public UpdateConsumer(final Set<Long> whiteList) {
 		this.whiteList = whiteList;
@@ -38,6 +47,7 @@ public class UpdateConsumer {
 		this.accessDeniedAction = null;
 		this.textAction = null;
 		this.photosAction = null;
+		this.photosDescriptionAction = null;
 	}
 
 	public UpdateConsumer onCommand(final String command, final CommandAction callback) {
@@ -46,7 +56,7 @@ public class UpdateConsumer {
 		return this;
 	}
 
-	public UpdateConsumer onText(final TextAction callback) {
+	public UpdateConsumer onMessage(final MessageAction callback) {
 		textAction = callback;
 
 		return this;
@@ -54,6 +64,12 @@ public class UpdateConsumer {
 
 	public UpdateConsumer onPhotos(final PhotosAction callback) {
 		photosAction = callback;
+
+		return this;
+	}
+
+	public UpdateConsumer onPhotos(final PhotosDescriptionAction callback) {
+		photosDescriptionAction = callback;
 
 		return this;
 	}
@@ -73,9 +89,11 @@ public class UpdateConsumer {
 	private void consumeMessage(Message message) {
 		long userId = message.getFrom().getId();
 		long chatId = message.getChatId();
+		int messageId = message.getMessageId();
+		Context context = Context.from(userId, chatId, messageId);
 
 		if (!whiteList.contains(userId)) {
-			consume(accessDeniedAction, action -> action.consume(chatId, userId));
+			consume(accessDeniedAction, action -> action.consume(context));
 
 			LOG.warn("Access denied for user ID = {}.", userId);
 
@@ -85,20 +103,21 @@ public class UpdateConsumer {
 		List<MessageEntity> entities = get(message, Message::hasEntities, Message::getEntities);
 		String text = get(message, Message::hasText, Message::getText);
 		List<PhotoSize> photos = get(message, Message::hasPhoto, Message::getPhoto);
+		String caption = message.getCaption();
 		List<MessageEntity> botCommands = getBotCommands(entities);
 
 		if (!botCommands.isEmpty()) {
 			for (MessageEntity entity : botCommands) {
 				String botCommand = entity.getText();
 
-				consume(commands.get(botCommand), command -> command.consume(chatId, userId, botCommand));
+				consume(commands.get(botCommand), command -> command.consume(context, botCommand));
 			}
-		} else if (photos != null && text != null) {
-			consume(photosAction, action -> action.consume(chatId, userId, photos, text));
+		} else if (photos != null && caption != null) {
+			consume(photosDescriptionAction, action -> action.consume(context, photos, caption));
 		} else if (photos != null) {
-			consume(photosAction, action -> action.consume(chatId, userId, photos, text));
+			consume(photosAction, action -> action.consume(context, photos));
 		} else if (text != null) {
-			consume(textAction, action -> action.consume(chatId, userId, text));
+			consume(textAction, action -> action.consume(context, text));
 		}
 	}
 

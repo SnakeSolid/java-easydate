@@ -1,0 +1,29 @@
+{image_description}
+
+{image_objects}
+
+Here is her profile description:
+
+```
+{profile_description}
+```
+
+You can take into account description if it contains interesting information for unusual opener.
+
+Create original and engaging openers for starting a conversation on a dating site, based on image description above.
+
+The openers should be: individualized, relevant, original and memorable, diverse.
+
+Important: Avoid cliches and generic phrases, create openers that encourage conversation.
+
+Write only items without introduction and conclusion.
+
+Break the phrases into several categories in the following format:
+
+## Category
+
+* Phrase 1;
+* Phrase 2;
+* Phrase 3;
+* Phrase 4;
+...

@@ -1,4 +1,4 @@
-package ru.snake.bot.easydate.consume;
+package ru.snake.bot.easydate.consume.callback;
 
 @FunctionalInterface
 public interface Callback<T> {

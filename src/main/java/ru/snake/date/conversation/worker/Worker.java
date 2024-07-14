@@ -67,6 +67,37 @@ public class Worker {
 		);
 	}
 
+	public synchronized OpenersResult writeOpeners(File file, String description)
+			throws OllamaBaseException, IOException, InterruptedException {
+		LOG.info("Generation openeras for {}", file);
+
+		checkFiles(file);
+
+		String imageDescription = imageQuery(file, Resource.asText("prompts/image_description.txt"));
+		String imageObjects = imageQuery(file, Resource.asText("prompts/image_objects.txt"));
+		String initialPhrases = textQuery(
+			Replacer.replace(
+				Resource.asText("prompts/text_openers_description.txt"),
+				Map.of(
+					"image_description",
+					imageDescription,
+					"image_objects",
+					imageObjects,
+					"profile_description",
+					description
+				)
+			)
+		);
+		String translatedPhrases = textQuery(initialPhrases, Resource.asText("prompts/text_translate.txt"));
+
+		return new OpenersResult(
+			imageDescription,
+			imageObjects,
+			trimLines(initialPhrases),
+			trimLines(translatedPhrases)
+		);
+	}
+
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
 		if (LOG.isInfoEnabled()) {
 			LOG.info("Execute text query: {}", Arrays.asList(messages));

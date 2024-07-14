@@ -17,6 +17,7 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
+import ru.snake.bot.easydate.consume.Context;
 import ru.snake.bot.easydate.consume.UpdateConsumer;
 import ru.snake.date.conversation.worker.OpenersResult;
 import ru.snake.date.conversation.worker.Worker;
@@ -42,27 +43,27 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 	@Override
 	public void consume(Update update) {
 		UpdateConsumer.create(whiteList)
-			.onText(this::processText)
+			.onMessage(this::processText)
 			.onPhotos(this::processPhotos)
+			.onPhotos(this::processPhotosDescription)
 			.onCommand("/start", this::commandStart)
 			.onCommand("/help", this::commandHelp)
 			.consume(update);
 	}
 
-	private void commandStart(final long chatId, final long userId, final String command) throws IOException {
-		sendText(chatId, Resource.asText("texts/command-start.txt"));
+	private void commandStart(final Context context, final String command) throws IOException {
+		sendText(context.getChatId(), Resource.asText("texts/command-start.txt"));
 	}
 
-	private void commandHelp(final long chatId, final long userId, final String command) throws IOException {
-		sendText(chatId, Resource.asText("texts/command-help.txt"));
+	private void commandHelp(final Context context, final String command) throws IOException {
+		sendText(context.getChatId(), Resource.asText("texts/command-help.txt"));
 	}
 
-	private void processText(final long chatId, final long userId, final String text) throws Exception {
-		sendMessage(chatId, "Not implemented yet.");
+	private void processText(final Context context, final String text) throws Exception {
+		sendMessage(context.getChatId(), "Not implemented yet.");
 	}
 
-	private void processPhotos(final long chatId, final long userId, final List<PhotoSize> photos, final String text)
-			throws Exception {
+	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
 		PhotoSize photo = getLargePhoto(photos);
 		File file = downloadPhoto(photo);
 		file.deleteOnExit();
@@ -75,7 +76,29 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 			LOG.info("Openers english: {}", openers.getEnglish());
 			LOG.info("Openers russian: {}", openers.getRussian());
 
-			sendMessage(chatId, openers.getRussian());
+			sendMessage(context.getChatId(), openers.getRussian());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+
+		file.delete();
+	}
+
+	private void processPhotosDescription(final Context context, final List<PhotoSize> photos, final String description)
+			throws Exception {
+		PhotoSize photo = getLargePhoto(photos);
+		File file = downloadPhoto(photo);
+		file.deleteOnExit();
+
+		try {
+			OpenersResult openers = worker.writeOpeners(file, description);
+
+			LOG.info("Image description: {}", openers.getDescription());
+			LOG.info("Image objects: {}", openers.getObjects());
+			LOG.info("Openers english: {}", openers.getEnglish());
+			LOG.info("Openers russian: {}", openers.getRussian());
+
+			sendMessage(context.getChatId(), openers.getRussian());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
 			LOG.warn("Error processing image.", e);
 		}
