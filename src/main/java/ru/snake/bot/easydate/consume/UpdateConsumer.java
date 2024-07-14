@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.EntityType;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
@@ -20,6 +21,7 @@ import org.telegram.telegrambots.meta.api.objects.message.Message;
 
 import ru.snake.bot.easydate.consume.callback.AccessDeniedAction;
 import ru.snake.bot.easydate.consume.callback.Callback;
+import ru.snake.bot.easydate.consume.callback.CallbackAction;
 import ru.snake.bot.easydate.consume.callback.CommandAction;
 import ru.snake.bot.easydate.consume.callback.MessageAction;
 import ru.snake.bot.easydate.consume.callback.PhotosAction;
@@ -33,7 +35,11 @@ public class UpdateConsumer {
 
 	private final Map<String, CommandAction> commands;
 
-	private AccessDeniedAction accessDeniedAction;
+	private final Map<String, CallbackAction> callbacks;
+
+	private CommandAction unknownCommand;
+
+	private CallbackAction unknownCallback;
 
 	private MessageAction textAction;
 
@@ -41,17 +47,40 @@ public class UpdateConsumer {
 
 	private PhotosDescriptionAction photosDescriptionAction;
 
+	private AccessDeniedAction accessDeniedAction;
+
 	public UpdateConsumer(final Set<Long> whiteList) {
 		this.whiteList = whiteList;
 		this.commands = new HashMap<>();
-		this.accessDeniedAction = null;
+		this.callbacks = new HashMap<>();
+		this.unknownCommand = null;
+		this.unknownCallback = null;
 		this.textAction = null;
 		this.photosAction = null;
 		this.photosDescriptionAction = null;
+		this.accessDeniedAction = null;
 	}
 
 	public UpdateConsumer onCommand(final String command, final CommandAction callback) {
 		commands.put(command, callback);
+
+		return this;
+	}
+
+	public UpdateConsumer onCommand(final CommandAction callback) {
+		unknownCommand = callback;
+
+		return this;
+	}
+
+	public UpdateConsumer onCallback(final String command, final CallbackAction callback) {
+		callbacks.put(command, callback);
+
+		return this;
+	}
+
+	public UpdateConsumer onCallback(final CallbackAction callback) {
+		unknownCallback = callback;
 
 		return this;
 	}
@@ -74,6 +103,12 @@ public class UpdateConsumer {
 		return this;
 	}
 
+	public UpdateConsumer onAccessDenied(AccessDeniedAction callback) {
+		this.accessDeniedAction = callback;
+
+		return this;
+	}
+
 	public void consume(Update update) {
 		if (update.hasMessage()) {
 			Message message = update.getMessage();
@@ -83,7 +118,34 @@ public class UpdateConsumer {
 			Message message = update.getEditedMessage();
 
 			consumeMessage(message);
+		} else if (update.hasCallbackQuery()) {
+			CallbackQuery query = update.getCallbackQuery();
+
+			consumeCallback(query);
 		}
+	}
+
+	private void consumeCallback(CallbackQuery query) {
+		long userId = query.getFrom().getId();
+		long chatId = query.getMessage().getChatId();
+		int messageId = query.getMessage().getMessageId();
+		Context context = Context.from(userId, chatId, messageId);
+
+		if (!whiteList.contains(userId)) {
+			consume(accessDeniedAction, action -> action.consume(context));
+
+			LOG.warn("Access denied for user ID = {}.", userId);
+
+			return;
+		}
+
+		String callback = query.getData();
+		String queryId = query.getId();
+
+		consume(
+			callbacks.getOrDefault(callback, unknownCallback),
+			command -> command.consume(context, queryId, callback)
+		);
 	}
 
 	private void consumeMessage(Message message) {
@@ -110,7 +172,10 @@ public class UpdateConsumer {
 			for (MessageEntity entity : botCommands) {
 				String botCommand = entity.getText();
 
-				consume(commands.get(botCommand), command -> command.consume(context, botCommand));
+				consume(
+					commands.getOrDefault(botCommand, unknownCommand),
+					command -> command.consume(context, botCommand)
+				);
 			}
 		} else if (photos != null && caption != null) {
 			consume(photosDescriptionAction, action -> action.consume(context, photos, caption));
@@ -162,8 +227,10 @@ public class UpdateConsumer {
 
 	@Override
 	public String toString() {
-		return "UpdateConsumer [whiteList=" + whiteList + ", commands=" + commands + ", accessDeniedAction="
-				+ accessDeniedAction + ", textAction=" + textAction + ", photosAction=" + photosAction + "]";
+		return "UpdateConsumer [whiteList=" + whiteList + ", commands=" + commands + ", callbacks=" + callbacks
+				+ ", unknownCommand=" + unknownCommand + ", unknownCallback=" + unknownCallback + ", textAction="
+				+ textAction + ", photosAction=" + photosAction + ", photosDescriptionAction=" + photosDescriptionAction
+				+ ", accessDeniedAction=" + accessDeniedAction + "]";
 	}
 
 	public static UpdateConsumer create(final Set<Long> whiteList) {

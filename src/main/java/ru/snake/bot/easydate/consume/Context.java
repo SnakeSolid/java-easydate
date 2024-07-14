@@ -14,6 +14,10 @@ public class Context {
 		this.messageId = messageId;
 	}
 
+	public long getUserId() {
+		return userId;
+	}
+
 	public long getChatId() {
 		return chatId;
 	}
