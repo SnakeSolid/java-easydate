@@ -35,7 +35,13 @@ public class Main {
 		Worker worker = createWorker(configFile);
 
 		try {
-			OpenersResult result = worker.writeOpeners(image);
+			OpenersResult result;
+
+			if (description == null) {
+				result = worker.writeOpeners(image);
+			} else {
+				result = worker.writeOpeners(image, description);
+			}
 
 			System.out.println(result.getDescription());
 			System.out.println("--- --- --- --- --- --- --- --- --- ---");
