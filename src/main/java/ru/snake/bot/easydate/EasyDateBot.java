@@ -15,7 +15,6 @@ import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
-import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
@@ -29,7 +28,7 @@ import ru.snake.bot.easydate.consume.UpdateConsumer;
 import ru.snake.date.conversation.worker.OpenersResult;
 import ru.snake.date.conversation.worker.Worker;
 
-public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
+public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private static final String CALLBACK_PROFILE = ":profile";
 
@@ -43,31 +42,25 @@ public class EasyDateBot implements LongPollingSingleThreadUpdateConsumer {
 
 	private final TelegramClient telegramClient;
 
-	private final Set<Long> whiteList;
-
 	private final Worker worker;
 
 	public EasyDateBot(final String botToken, final Set<Long> whiteList, final Worker worker) {
-		this.telegramClient = new OkHttpTelegramClient(botToken);
-		this.whiteList = whiteList;
-		this.worker = worker;
-	}
+		super(whiteList);
 
-	@Override
-	public void consume(Update update) {
-		UpdateConsumer.create(whiteList)
-			.onMessage(this::processText)
-			.onPhotos(this::processPhotos)
-			.onPhotos(this::processPhotosDescription)
-			.onCommand("/start", this::commandStart)
-			.onCommand("/help", this::commandHelp)
-			.onCommand(this::commandInvalid)
-			.onCallback(CALLBACK_PROFILE, this::callbackProfile)
-			.onCallback(CALLBACK_OPENER, this::callbackOpener)
-			.onCallback(CALLBACK_CONVERSATION, this::callbackConversation)
-			.onCallback(this::callbackInvalid)
-			.onAccessDenied(this::accessDenied)
-			.consume(update);
+		this.telegramClient = new OkHttpTelegramClient(botToken);
+		this.worker = worker;
+
+		onMessage(this::processText);
+		onPhotos(this::processPhotos);
+		onPhotos(this::processPhotosDescription);
+		onCommand("/start", this::commandStart);
+		onCommand("/help", this::commandHelp);
+		onCommand(this::commandInvalid);
+		onCallback(CALLBACK_PROFILE, this::callbackProfile);
+		onCallback(CALLBACK_OPENER, this::callbackOpener);
+		onCallback(CALLBACK_CONVERSATION, this::callbackConversation);
+		onCallback(this::callbackInvalid);
+		onAccessDenied(this::accessDenied);
 	}
 
 	private void accessDenied(final Context context) throws IOException {

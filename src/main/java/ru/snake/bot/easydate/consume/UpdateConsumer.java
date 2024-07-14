@@ -12,6 +12,7 @@ import java.util.function.Predicate;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.objects.CallbackQuery;
 import org.telegram.telegrambots.meta.api.objects.EntityType;
 import org.telegram.telegrambots.meta.api.objects.MessageEntity;
@@ -27,7 +28,7 @@ import ru.snake.bot.easydate.consume.callback.MessageAction;
 import ru.snake.bot.easydate.consume.callback.PhotosAction;
 import ru.snake.bot.easydate.consume.callback.PhotosDescriptionAction;
 
-public class UpdateConsumer {
+public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private static final Logger LOG = LoggerFactory.getLogger(UpdateConsumer.class);
 
@@ -109,6 +110,7 @@ public class UpdateConsumer {
 		return this;
 	}
 
+	@Override
 	public void consume(Update update) {
 		if (update.hasMessage()) {
 			Message message = update.getMessage();
