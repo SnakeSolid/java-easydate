@@ -1,4 +1,4 @@
-package ru.snake.date.conversation.worker;
+package ru.snake.date.conversation.worker.data;
 
 public class OpenersResult {
 

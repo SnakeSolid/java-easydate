@@ -14,6 +14,9 @@ public class BotCommand implements Runnable {
 	@Option(names = { "-c", "--config" }, description = "LLM configuration file")
 	private File config;
 
+	@Option(names = { "-d", "--database" }, description = "Path to database file")
+	private File database;
+
 	@Option(names = { "-t", "--bot-token" }, description = "Telegram bot access token", required = true)
 	private String botToken;
 
@@ -26,13 +29,13 @@ public class BotCommand implements Runnable {
 
 	@Override
 	public void run() {
-		callback.execute(config, botToken, allowUsers);
+		callback.execute(config, database, botToken, allowUsers);
 	}
 
 	@Override
 	public String toString() {
-		return "BotCommand [callback=" + callback + ", config=" + config + ", botToken=" + botToken + ", allowUsers="
-				+ allowUsers + "]";
+		return "BotCommand [callback=" + callback + ", config=" + config + ", database=" + database + ", botToken="
+				+ botToken + ", allowUsers=" + allowUsers + "]";
 	}
 
 }

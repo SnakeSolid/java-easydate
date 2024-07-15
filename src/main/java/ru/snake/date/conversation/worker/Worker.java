@@ -18,6 +18,10 @@ import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestModel;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatResult;
 import ru.snake.bot.easydate.Replacer;
 import ru.snake.bot.easydate.Resource;
+import ru.snake.date.conversation.worker.data.OpenersResult;
+import ru.snake.date.conversation.worker.data.ProfileDescription;
+import ru.snake.date.conversation.worker.data.ProfileResult;
+import ru.snake.date.conversation.worker.text.HeaderTextSplitter;
 
 public class Worker {
 
@@ -96,6 +100,16 @@ public class Worker {
 			trimLines(initialPhrases),
 			trimLines(translatedPhrases)
 		);
+	}
+
+	public synchronized ProfileResult profileDescription(String text)
+			throws OllamaBaseException, IOException, InterruptedException {
+		String result = textQuery(
+			Replacer.replace(Resource.asText("prompts/create_profile.txt"), Map.of("text", text))
+		);
+		List<ProfileDescription> descriptions = new HeaderTextSplitter("##", "**").split(result);
+
+		return new ProfileResult(descriptions);
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {

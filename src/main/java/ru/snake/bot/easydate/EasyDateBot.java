@@ -25,8 +25,12 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
 import ru.snake.bot.easydate.consume.Context;
 import ru.snake.bot.easydate.consume.UpdateConsumer;
-import ru.snake.date.conversation.worker.OpenersResult;
+import ru.snake.bot.easydate.database.ChatState;
+import ru.snake.bot.easydate.database.Database;
 import ru.snake.date.conversation.worker.Worker;
+import ru.snake.date.conversation.worker.data.OpenersResult;
+import ru.snake.date.conversation.worker.data.ProfileDescription;
+import ru.snake.date.conversation.worker.data.ProfileResult;
 
 public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
@@ -40,14 +44,17 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private static final int TARGET_IMAGE_SIZE = 672;
 
+	private final Database database;
+
 	private final TelegramClient telegramClient;
 
 	private final Worker worker;
 
-	public EasyDateBot(final String botToken, final Set<Long> whiteList, final Worker worker) {
+	public EasyDateBot(final String botToken, final Set<Long> whiteList, final Database database, final Worker worker) {
 		super(whiteList);
 
 		this.telegramClient = new OkHttpTelegramClient(botToken);
+		this.database = database;
 		this.worker = worker;
 
 		onMessage(this::processText);
@@ -72,41 +79,40 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private void callbackProfile(final Context context, final String queryId, final String callback)
 			throws IOException {
-		sendAnswer(queryId);
-		sendMessage(context.getChatId(), callback);
+		database.setState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
+
+		sendCallbackAnswer(queryId);
+		sendMessage(context.getChatId(), Resource.asText("texts/profile_description.txt"));
 	}
 
 	private void callbackOpener(final Context context, final String queryId, final String callback) throws IOException {
-		sendAnswer(queryId);
-		sendMessage(context.getChatId(), callback);
+		database.setState(context.getChatId(), ChatState.GENERATE_OPENER);
+
+		sendCallbackAnswer(queryId);
+		sendMessage(context.getChatId(), "Not implemented yet.");
 	}
 
 	private void callbackConversation(final Context context, final String queryId, final String callback)
 			throws IOException {
-		sendAnswer(queryId);
-		sendMessage(context.getChatId(), callback);
+		database.setState(context.getChatId(), ChatState.CONTINUE_CONVERSATION);
+
+		sendCallbackAnswer(queryId);
+		sendMessage(context.getChatId(), "Not implemented yet.");
 	}
 
 	private void callbackInvalid(final Context context, final String queryId, final String callback)
 			throws IOException {
 		LOG.warn("Unknown callback action: {}", callback);
 
-		sendAnswer(queryId);
+		sendCallbackAnswer(queryId);
 	}
 
 	private void commandStart(final Context context, final String command) throws IOException {
-		InlineKeyboardRow actionsRow = new InlineKeyboardRow();
-		actionsRow.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
-		actionsRow.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
-		actionsRow.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
-
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(actionsRow).build();
-
-		sendMessage(context.getChatId(), Resource.asText("texts/command-start.txt"), keyboard);
+		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"), createKeyboard());
 	}
 
 	private void commandHelp(final Context context, final String command) throws IOException {
-		sendMessage(context.getChatId(), Resource.asText("texts/command-help.txt"));
+		sendMessage(context.getChatId(), Resource.asText("texts/command_help.txt"));
 	}
 
 	private void commandInvalid(final Context context, final String command) throws IOException {
@@ -114,7 +120,31 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 	}
 
 	private void processText(final Context context, final String text) throws Exception {
-		sendMessage(context.getChatId(), "Not implemented yet.");
+		if (database.getState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
+			try {
+				ProfileResult result = worker.profileDescription(text);
+				StringBuilder builder = new StringBuilder();
+
+				for (ProfileDescription description : result.getDescriptions()) {
+					if (!builder.isEmpty()) {
+						builder.append("\n\n");
+					}
+
+					builder.append(String.format("*%s*\n\n%s", description.getHeader(), description.getContent()));
+				}
+
+				sendMessage(context.getChatId(), builder.toString(), createKeyboard());
+			} catch (OllamaBaseException | IOException | InterruptedException e) {
+				LOG.warn("Error processing image.", e);
+
+				return;
+			}
+
+		} else {
+			sendMessage(context.getChatId(), "Not implemented yet.");
+		}
+
+		database.setState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
 	}
 
 	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
@@ -124,11 +154,6 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 		try {
 			OpenersResult openers = worker.writeOpeners(file);
-
-			LOG.info("Image description: {}", openers.getDescription());
-			LOG.info("Image objects: {}", openers.getObjects());
-			LOG.info("Openers english: {}", openers.getEnglish());
-			LOG.info("Openers russian: {}", openers.getRussian());
 
 			sendMessage(context.getChatId(), openers.getRussian());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
@@ -146,11 +171,6 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 		try {
 			OpenersResult openers = worker.writeOpeners(file, description);
-
-			LOG.info("Image description: {}", openers.getDescription());
-			LOG.info("Image objects: {}", openers.getObjects());
-			LOG.info("Openers english: {}", openers.getEnglish());
-			LOG.info("Openers russian: {}", openers.getRussian());
 
 			sendMessage(context.getChatId(), openers.getRussian());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
@@ -197,6 +217,16 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		return bestPhoto;
 	}
 
+	private ReplyKeyboard createKeyboard() {
+		InlineKeyboardRow actionsRow = new InlineKeyboardRow();
+		actionsRow.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
+		actionsRow.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
+		actionsRow.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(actionsRow).build();
+		return keyboard;
+	}
+
 	private void sendMessage(long chatId, String text) {
 		SendMessage message = SendMessage.builder()
 			.chatId(chatId)
@@ -226,7 +256,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		}
 	}
 
-	private void sendAnswer(String queryId) {
+	private void sendCallbackAnswer(String queryId) {
 		AnswerCallbackQuery answer = AnswerCallbackQuery.builder().callbackQueryId(queryId).build();
 
 		try {
@@ -236,30 +266,18 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		}
 	}
 
+	private static final Set<Character> ESCAPE_CHARACTERS = Set
+		.of('_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!');
+
 	private static String escape(final String value) {
 		StringBuilder builder = new StringBuilder();
 
 		for (char ch : value.toCharArray()) {
-			switch (ch) {
-			case '.':
-				builder.append("\\.");
-				break;
-
-			case '#':
-				builder.append("\\#");
-				break;
-
-			case '-':
-				builder.append("\\-");
-				break;
-
-			case '!':
-				builder.append("\\!");
-				break;
-
-			default:
+			if (ESCAPE_CHARACTERS.contains(ch)) {
+				builder.append('\\');
 				builder.append(ch);
-				break;
+			} else {
+				builder.append(ch);
 			}
 		}
 

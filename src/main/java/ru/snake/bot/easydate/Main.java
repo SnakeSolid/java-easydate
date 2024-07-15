@@ -15,9 +15,10 @@ import picocli.CommandLine;
 import ru.snake.bot.easydate.cli.BotCommand;
 import ru.snake.bot.easydate.cli.ImageCommand;
 import ru.snake.bot.easydate.cli.RootCommand;
-import ru.snake.date.conversation.worker.OpenersResult;
+import ru.snake.bot.easydate.database.Database;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.WorkerSettings;
+import ru.snake.date.conversation.worker.data.OpenersResult;
 
 public class Main {
 
@@ -59,9 +60,15 @@ public class Main {
 		}
 	}
 
-	private static void startBot(final File configFile, final String botToken, final Set<Long> allowUsers) {
+	private static void startBot(
+		final File configFile,
+		final File databaseFile,
+		final String botToken,
+		final Set<Long> allowUsers
+	) {
 		Worker worker = createWorker(configFile);
-		EasyDateBot bot = new EasyDateBot(botToken, allowUsers, worker);
+		Database database = createDatabase(databaseFile);
+		EasyDateBot bot = new EasyDateBot(botToken, allowUsers, database, worker);
 
 		try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
 			botsApplication.registerBot(botToken, bot);
@@ -72,6 +79,14 @@ public class Main {
 			LOG.error("Thread was interrupted.", e);
 		} catch (Exception e) {
 			LOG.error("Unknown error.", e);
+		}
+	}
+
+	private static Database createDatabase(File databaseFile) {
+		if (databaseFile != null) {
+			return Database.onDisk(databaseFile);
+		} else {
+			return Database.inMemory();
 		}
 	}
 

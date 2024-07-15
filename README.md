@@ -16,6 +16,7 @@ mvn package assembly:single
 
 ## Features
 
+- [x] Suggest profile description;
 - [x] Generate operers by photo;
 - [x] Generate openers by photo and profile description;
 - [ ] Suggest next message for char;
