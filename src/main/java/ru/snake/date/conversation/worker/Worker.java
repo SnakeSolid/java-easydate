@@ -16,12 +16,14 @@ import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatMessageRole;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestBuilder;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatRequestModel;
 import io.github.amithkoujalgi.ollama4j.core.models.chat.OllamaChatResult;
-import ru.snake.bot.easydate.Replacer;
 import ru.snake.bot.easydate.Resource;
+import ru.snake.date.conversation.text.HeaderTextSplitter;
+import ru.snake.date.conversation.text.ListTextSplitter;
+import ru.snake.date.conversation.text.Replacer;
+import ru.snake.date.conversation.worker.data.ConverationResult;
 import ru.snake.date.conversation.worker.data.OpenersResult;
 import ru.snake.date.conversation.worker.data.ProfileDescription;
 import ru.snake.date.conversation.worker.data.ProfileResult;
-import ru.snake.date.conversation.worker.text.HeaderTextSplitter;
 
 public class Worker {
 
@@ -45,6 +47,16 @@ public class Worker {
 		this.textApi = textApi;
 		this.imageModelName = imageModelName;
 		this.textModelName = textModelName;
+	}
+
+	public synchronized ProfileResult profileDescription(String text)
+			throws OllamaBaseException, IOException, InterruptedException {
+		String result = textQuery(
+			Replacer.replace(Resource.asText("prompts/create_profile.txt"), Map.of("text", text))
+		);
+		List<ProfileDescription> descriptions = new HeaderTextSplitter("##", "**").split(result);
+
+		return new ProfileResult(descriptions);
 	}
 
 	public synchronized OpenersResult writeOpeners(File file)
@@ -102,14 +114,14 @@ public class Worker {
 		);
 	}
 
-	public synchronized ProfileResult profileDescription(String text)
+	public synchronized ConverationResult continueConveration(String text)
 			throws OllamaBaseException, IOException, InterruptedException {
 		String result = textQuery(
-			Replacer.replace(Resource.asText("prompts/create_profile.txt"), Map.of("text", text))
+			Replacer.replace(Resource.asText("prompts/continue_converation.txt"), Map.of("text", text))
 		);
-		List<ProfileDescription> descriptions = new HeaderTextSplitter("##", "**").split(result);
+		List<String> descriptions = new ListTextSplitter("-", "*", "1", "2", "3", "4", "5").split(result);
 
-		return new ProfileResult(descriptions);
+		return new ConverationResult(descriptions);
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {

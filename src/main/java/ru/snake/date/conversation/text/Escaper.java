@@ -1,4 +1,4 @@
-package ru.snake.bot.easydate;
+package ru.snake.date.conversation.text;
 
 import java.util.Set;
 

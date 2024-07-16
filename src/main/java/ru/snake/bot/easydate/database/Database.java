@@ -19,6 +19,10 @@ public interface Database {
 
 	public OpenerParameters getChatOpener(final long chatId);
 
+	public void setConversation(final long chatId, final String text);
+
+	public String getConversation(final long chatId);
+
 	public static Database onDisk(File databasePath) {
 		DB db = DBMaker.fileDB(databasePath).make();
 

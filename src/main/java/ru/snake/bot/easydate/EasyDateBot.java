@@ -21,7 +21,9 @@ import ru.snake.bot.easydate.consume.Context;
 import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
 import ru.snake.bot.easydate.database.OpenerParameters;
+import ru.snake.date.conversation.text.Replacer;
 import ru.snake.date.conversation.worker.Worker;
+import ru.snake.date.conversation.worker.data.ConverationResult;
 import ru.snake.date.conversation.worker.data.OpenersResult;
 import ru.snake.date.conversation.worker.data.ProfileResult;
 
@@ -36,6 +38,8 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 	private static final String CALLBACK_OPENER_REDO = ":opener_redo";
 
 	private static final String CALLBACK_CONVERSATION = ":conversation";
+
+	private static final String CALLBACK_CONVERSATION_REDO = ":conversation_redo";
 
 	private static final Logger LOG = LoggerFactory.getLogger(EasyDateBot.class);
 
@@ -62,6 +66,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		onCallback(CALLBACK_OPENER, this::callbackOpener);
 		onCallback(CALLBACK_OPENER_REDO, this::callbackOpenerRedo);
 		onCallback(CALLBACK_CONVERSATION, this::callbackConversation);
+		onCallback(CALLBACK_CONVERSATION_REDO, this::callbackConversationRedo);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
 	}
@@ -75,26 +80,32 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void callbackProfile(final Context context, final String queryId, final String callback)
 			throws IOException {
+		sendCallbackAnswer(queryId);
+
 		database.setChatState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
 
-		sendCallbackAnswer(queryId);
 		sendMessage(context.getChatId(), Resource.asText("texts/profile_description.txt"));
 	}
 
 	private void callbackProfileRedo(final Context context, final String queryId, final String callback) {
+		sendCallbackAnswer(queryId);
+
 		String text = database.getProfileText(context.getChatId());
 
 		generateProfileDescription(context.getChatId(), text);
 	}
 
 	private void callbackOpener(final Context context, final String queryId, final String callback) throws IOException {
+		sendCallbackAnswer(queryId);
+
 		database.setChatState(context.getChatId(), ChatState.GENERATE_OPENER);
 
-		sendCallbackAnswer(queryId);
 		sendMessage(context.getChatId(), Resource.asText("texts/generate_opener.txt"));
 	}
 
 	private void callbackOpenerRedo(final Context context, final String queryId, final String callback) {
+		sendCallbackAnswer(queryId);
+
 		OpenerParameters parameters = database.getChatOpener(context.getChatId());
 
 		if (parameters != null) {
@@ -104,17 +115,26 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void callbackConversation(final Context context, final String queryId, final String callback)
 			throws IOException {
+		sendCallbackAnswer(queryId);
+
 		database.setChatState(context.getChatId(), ChatState.CONTINUE_CONVERSATION);
 
+		sendMessage(context.getChatId(), Resource.asText("texts/continue_conversation.txt"));
+	}
+
+	private void callbackConversationRedo(final Context context, final String queryId, final String callback) {
 		sendCallbackAnswer(queryId);
-		sendMessage(context.getChatId(), "Not implemented yet.");
+
+		String text = database.getConversation(context.getChatId());
+
+		generateConveration(context.getChatId(), text);
 	}
 
 	private void callbackInvalid(final Context context, final String queryId, final String callback)
 			throws IOException {
-		LOG.warn("Unknown callback action: {}", callback);
-
 		sendCallbackAnswer(queryId);
+
+		LOG.warn("Unknown callback action: {}", callback);
 	}
 
 	private void commandStart(final Context context, final String command) throws IOException {
@@ -136,6 +156,10 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 			database.setProfileText(context.getChatId(), text);
 
 			generateProfileDescription(context.getChatId(), text);
+		} else if (chatState == ChatState.CONTINUE_CONVERSATION) {
+			database.setConversation(context.getChatId(), text);
+
+			generateConveration(context.getChatId(), text);
 		} else {
 			unknownState(context.getChatId());
 		}
@@ -173,6 +197,8 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 	private void unknownState(long chatId) throws IOException {
 		sendMessage(chatId, Resource.asText("texts/unknown_state.txt"), keyboardMenu());
 	}
+
+	// ---- Basic functions ----
 
 	private void generateProfileDescription(long chatId, String text) {
 		try {
@@ -217,6 +243,29 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		file.delete();
 	}
 
+	private void generateConveration(long chatId, String text) {
+		try {
+			ConverationResult result = worker.continueConveration(text);
+
+			sendMessage(chatId, result.asString(), keyboardConversation());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+	}
+
+	// ---- Keyboards ----
+
+	private ReplyKeyboard keyboardProfile() {
+		InlineKeyboardRow redoRow = new InlineKeyboardRow();
+		redoRow.add(
+			InlineKeyboardButton.builder().text("Предложить еще варианты").callbackData(CALLBACK_PROFILE_REDO).build()
+		);
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(redoRow).keyboardRow(menuRow()).build();
+
+		return keyboard;
+	}
+
 	private ReplyKeyboard keyboardOpeners() {
 		InlineKeyboardRow redoRow = new InlineKeyboardRow();
 		redoRow.add(
@@ -228,10 +277,13 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		return keyboard;
 	}
 
-	private ReplyKeyboard keyboardProfile() {
+	private ReplyKeyboard keyboardConversation() {
 		InlineKeyboardRow redoRow = new InlineKeyboardRow();
 		redoRow.add(
-			InlineKeyboardButton.builder().text("Предложить еще варианты").callbackData(CALLBACK_PROFILE_REDO).build()
+			InlineKeyboardButton.builder()
+				.text("Придумать еще варианты")
+				.callbackData(CALLBACK_CONVERSATION_REDO)
+				.build()
 		);
 
 		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(redoRow).keyboardRow(menuRow()).build();
@@ -253,6 +305,8 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 		return rowTwo;
 	}
+
+	// ---- Utility functions ----
 
 	private static PhotoSize getLargestPhoto(final List<PhotoSize> photos) {
 		PhotoSize bestPhoto = null;

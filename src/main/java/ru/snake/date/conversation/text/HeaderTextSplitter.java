@@ -1,4 +1,4 @@
-package ru.snake.date.conversation.worker.text;
+package ru.snake.date.conversation.text;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,7 @@ public class HeaderTextSplitter {
 			result = result.replace(prefix, "");
 		}
 
-		return result;
+		return result.strip();
 	}
 
 	private boolean checkHeader(String line) {
