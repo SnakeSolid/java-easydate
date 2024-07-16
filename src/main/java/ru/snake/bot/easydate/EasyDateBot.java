@@ -35,6 +35,8 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private static final String CALLBACK_PROFILE = ":profile";
 
+	private static final String CALLBACK_PROFILE_REDO = ":profile_redo";
+
 	private static final String CALLBACK_OPENER = ":opener";
 
 	private static final String CALLBACK_CONVERSATION = ":conversation";
@@ -63,6 +65,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		onCommand("/help", this::commandHelp);
 		onCommand(this::commandInvalid);
 		onCallback(CALLBACK_PROFILE, this::callbackProfile);
+		onCallback(CALLBACK_PROFILE_REDO, this::callbackProfileRedo);
 		onCallback(CALLBACK_OPENER, this::callbackOpener);
 		onCallback(CALLBACK_CONVERSATION, this::callbackConversation);
 		onCallback(this::callbackInvalid);
@@ -78,14 +81,26 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private void callbackProfile(final Context context, final String queryId, final String callback)
 			throws IOException {
-		database.setState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
+		database.setChatState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
 
 		sendCallbackAnswer(queryId);
 		sendMessage(context.getChatId(), Resource.asText("texts/profile_description.txt"));
 	}
 
+	private void callbackProfileRedo(final Context context, final String queryId, final String callback) {
+		String text = database.getProfileText(context.getChatId());
+
+		try {
+			ProfileResult result = worker.profileDescription(text);
+
+			sendMessage(context.getChatId(), result.asString(), keyboardProfile());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+	}
+
 	private void callbackOpener(final Context context, final String queryId, final String callback) throws IOException {
-		database.setState(context.getChatId(), ChatState.GENERATE_OPENER);
+		database.setChatState(context.getChatId(), ChatState.GENERATE_OPENER);
 
 		sendCallbackAnswer(queryId);
 		sendMessage(context.getChatId(), "Not implemented yet.");
@@ -93,7 +108,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private void callbackConversation(final Context context, final String queryId, final String callback)
 			throws IOException {
-		database.setState(context.getChatId(), ChatState.CONTINUE_CONVERSATION);
+		database.setChatState(context.getChatId(), ChatState.CONTINUE_CONVERSATION);
 
 		sendCallbackAnswer(queryId);
 		sendMessage(context.getChatId(), "Not implemented yet.");
@@ -107,7 +122,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 	}
 
 	private void commandStart(final Context context, final String command) throws IOException {
-		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"), createKeyboard());
+		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"), keyboardActions());
 	}
 
 	private void commandHelp(final Context context, final String command) throws IOException {
@@ -119,21 +134,19 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 	}
 
 	private void processText(final Context context, final String text) throws Exception {
-		if (database.getState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
+		if (database.getChatState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
+			database.setProfileText(context.getChatId(), text);
+
 			try {
 				ProfileResult result = worker.profileDescription(text);
 
-				sendMessage(context.getChatId(), result.asString(), createKeyboard());
+				sendMessage(context.getChatId(), result.asString(), keyboardProfile());
 			} catch (OllamaBaseException | IOException | InterruptedException e) {
 				LOG.warn("Error processing image.", e);
-
-				return;
 			}
 		} else {
 			sendMessage(context.getChatId(), "Not implemented yet.");
 		}
-
-		database.setState(context.getChatId(), ChatState.PROFILE_DESCRIPTION);
 	}
 
 	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
@@ -206,13 +219,30 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		return bestPhoto;
 	}
 
-	private ReplyKeyboard createKeyboard() {
-		InlineKeyboardRow actionsRow = new InlineKeyboardRow();
-		actionsRow.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
-		actionsRow.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
-		actionsRow.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+	private ReplyKeyboard keyboardProfile() {
+		InlineKeyboardRow rowOne = new InlineKeyboardRow();
+		rowOne.add(
+			InlineKeyboardButton.builder().text("Предложить еще варианты").callbackData(CALLBACK_PROFILE_REDO).build()
+		);
 
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(actionsRow).build();
+		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
+		rowTwo.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowOne).keyboardRow(rowTwo).build();
+
+		return keyboard;
+	}
+
+	private ReplyKeyboard keyboardActions() {
+		InlineKeyboardRow row = new InlineKeyboardRow();
+		row.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
+		row.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
+		row.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(row).build();
+
 		return keyboard;
 	}
 
@@ -230,7 +260,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		}
 	}
 
-	private void sendMessage(long chatId, String text, final ReplyKeyboard keyboard) {
+	private void sendMessage(long chatId, final String text, final ReplyKeyboard keyboard) {
 		SendMessage message = SendMessage.builder()
 			.chatId(chatId)
 			.parseMode(ParseMode.MARKDOWNV2)

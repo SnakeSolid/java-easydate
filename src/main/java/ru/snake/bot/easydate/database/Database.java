@@ -7,9 +7,13 @@ import org.mapdb.DBMaker;
 
 public interface Database {
 
-	public void setState(final long chatId, final ChatState state);
+	public void setChatState(final long chatId, final ChatState state);
 
-	public ChatState getState(final long chatId);
+	public ChatState getChatState(final long chatId);
+
+	public void setProfileText(final long chatId, final String text);
+
+	public String getProfileText(final long chatId);
 
 	public static Database onDisk(File databasePath) {
 		DB db = DBMaker.fileDB(databasePath).make();
