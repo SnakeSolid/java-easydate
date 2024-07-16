@@ -8,30 +8,22 @@ import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
-import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
-import org.telegram.telegrambots.meta.api.methods.GetFile;
-import org.telegram.telegrambots.meta.api.methods.ParseMode;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
 import ru.snake.bot.easydate.consume.Context;
-import ru.snake.bot.easydate.consume.UpdateConsumer;
 import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.data.OpenersResult;
 import ru.snake.date.conversation.worker.data.ProfileResult;
 
-public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
+public class EasyDateBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
 
 	private static final String CALLBACK_PROFILE = ":profile";
 
@@ -47,14 +39,11 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private final Database database;
 
-	private final TelegramClient telegramClient;
-
 	private final Worker worker;
 
 	public EasyDateBot(final String botToken, final Set<Long> whiteList, final Database database, final Worker worker) {
-		super(whiteList);
+		super(botToken, whiteList);
 
-		this.telegramClient = new OkHttpTelegramClient(botToken);
 		this.database = database;
 		this.worker = worker;
 
@@ -90,13 +79,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 	private void callbackProfileRedo(final Context context, final String queryId, final String callback) {
 		String text = database.getProfileText(context.getChatId());
 
-		try {
-			ProfileResult result = worker.profileDescription(text);
-
-			sendMessage(context.getChatId(), result.asString(), keyboardProfile());
-		} catch (OllamaBaseException | IOException | InterruptedException e) {
-			LOG.warn("Error processing image.", e);
-		}
+		generateProfileDescription(context.getChatId(), text);
 	}
 
 	private void callbackOpener(final Context context, final String queryId, final String callback) throws IOException {
@@ -137,20 +120,24 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		if (database.getChatState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
 			database.setProfileText(context.getChatId(), text);
 
-			try {
-				ProfileResult result = worker.profileDescription(text);
-
-				sendMessage(context.getChatId(), result.asString(), keyboardProfile());
-			} catch (OllamaBaseException | IOException | InterruptedException e) {
-				LOG.warn("Error processing image.", e);
-			}
+			generateProfileDescription(context.getChatId(), text);
 		} else {
 			sendMessage(context.getChatId(), "Not implemented yet.");
 		}
 	}
 
+	private void generateProfileDescription(long chatId, String text) {
+		try {
+			ProfileResult result = worker.profileDescription(text);
+
+			sendMessage(chatId, result.asString(), keyboardProfile());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+	}
+
 	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
-		PhotoSize photo = getLargePhoto(photos);
+		PhotoSize photo = getLargestPhoto(photos);
 		File file = downloadPhoto(photo);
 		file.deleteOnExit();
 
@@ -167,7 +154,7 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 
 	private void processPhotosDescription(final Context context, final List<PhotoSize> photos, final String description)
 			throws Exception {
-		PhotoSize photo = getLargePhoto(photos);
+		PhotoSize photo = getLargestPhoto(photos);
 		File file = downloadPhoto(photo);
 		file.deleteOnExit();
 
@@ -180,43 +167,6 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		}
 
 		file.delete();
-	}
-
-	private File downloadPhoto(PhotoSize photo) {
-		String fileId = photo.getFileId();
-		GetFile getFile = GetFile.builder().fileId(fileId).build();
-
-		try {
-			org.telegram.telegrambots.meta.api.objects.File file = telegramClient.execute(getFile);
-
-			return telegramClient.downloadFile(file);
-		} catch (TelegramApiException e) {
-			LOG.warn("Failed to get file.", e);
-		}
-
-		return null;
-	}
-
-	private static PhotoSize getLargePhoto(final List<PhotoSize> photos) {
-		PhotoSize bestPhoto = null;
-		int averageBest = 0;
-
-		for (PhotoSize photo : photos) {
-			int averageSize = (photo.getWidth() + photo.getHeight()) / 2;
-
-			if (bestPhoto == null) {
-				bestPhoto = photo;
-				averageBest = averageSize;
-			} else if (averageBest < TARGET_IMAGE_SIZE && averageBest < averageSize) {
-				bestPhoto = photo;
-				averageBest = averageSize;
-			} else if (averageBest > averageSize) {
-				bestPhoto = photo;
-				averageBest = averageSize;
-			}
-		}
-
-		return bestPhoto;
 	}
 
 	private ReplyKeyboard keyboardProfile() {
@@ -246,61 +196,26 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		return keyboard;
 	}
 
-	private void sendMessage(long chatId, String text) {
-		SendMessage message = SendMessage.builder()
-			.chatId(chatId)
-			.parseMode(ParseMode.MARKDOWNV2)
-			.text(escape(text))
-			.build();
+	private static PhotoSize getLargestPhoto(final List<PhotoSize> photos) {
+		PhotoSize bestPhoto = null;
+		int averageBest = 0;
 
-		try {
-			telegramClient.execute(message);
-		} catch (TelegramApiException e) {
-			LOG.warn("Failed to send message.", e);
-		}
-	}
+		for (PhotoSize photo : photos) {
+			int averageSize = (photo.getWidth() + photo.getHeight()) / 2;
 
-	private void sendMessage(long chatId, final String text, final ReplyKeyboard keyboard) {
-		SendMessage message = SendMessage.builder()
-			.chatId(chatId)
-			.parseMode(ParseMode.MARKDOWNV2)
-			.text(escape(text))
-			.replyMarkup(keyboard)
-			.build();
-
-		try {
-			telegramClient.execute(message);
-		} catch (TelegramApiException e) {
-			LOG.warn("Failed to send message.", e);
-		}
-	}
-
-	private void sendCallbackAnswer(String queryId) {
-		AnswerCallbackQuery answer = AnswerCallbackQuery.builder().callbackQueryId(queryId).build();
-
-		try {
-			telegramClient.execute(answer);
-		} catch (TelegramApiException e) {
-			LOG.warn("Failed to send answer.", e);
-		}
-	}
-
-	private static final Set<Character> ESCAPE_CHARACTERS = Set
-		.of('_', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!');
-
-	private static String escape(final String value) {
-		StringBuilder builder = new StringBuilder();
-
-		for (char ch : value.toCharArray()) {
-			if (ESCAPE_CHARACTERS.contains(ch)) {
-				builder.append('\\');
-				builder.append(ch);
-			} else {
-				builder.append(ch);
+			if (bestPhoto == null) {
+				bestPhoto = photo;
+				averageBest = averageSize;
+			} else if (averageBest < TARGET_IMAGE_SIZE && averageBest < averageSize) {
+				bestPhoto = photo;
+				averageBest = averageSize;
+			} else if (averageBest > averageSize) {
+				bestPhoto = photo;
+				averageBest = averageSize;
 			}
 		}
 
-		return builder.toString();
+		return bestPhoto;
 	}
 
 }

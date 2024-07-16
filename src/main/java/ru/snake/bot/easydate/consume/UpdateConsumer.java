@@ -235,8 +235,4 @@ public class UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 				+ ", accessDeniedAction=" + accessDeniedAction + "]";
 	}
 
-	public static UpdateConsumer create(final Set<Long> whiteList) {
-		return new UpdateConsumer(whiteList);
-	}
-
 }
