@@ -91,7 +91,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		database.setChatState(context.getChatId(), ChatState.GENERATE_OPENER);
 
 		sendCallbackAnswer(queryId);
-		sendMessage(context.getChatId(), "Not implemented yet.");
+		sendMessage(context.getChatId(), Resource.asText("texts/generate_opener.txt"));
 	}
 
 	private void callbackOpenerRedo(final Context context, final String queryId, final String callback) {
@@ -100,39 +100,6 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		if (parameters != null) {
 			generateOpeners(context.getChatId(), parameters);
 		}
-	}
-
-	private void generateOpeners(long chatId, OpenerParameters parameters) {
-		PhotoSize photo = PhotoSize.builder().fileId(parameters.getFileId()).build();
-		File file = downloadPhoto(photo);
-
-		if (file == null) {
-			try {
-				sendMessage(chatId, Resource.asText("image_download_fail.txt"), keyboardMenu());
-			} catch (IOException e) {
-				LOG.warn("Error processing image.", e);
-			}
-
-			return;
-		}
-
-		file.deleteOnExit();
-
-		try {
-			OpenersResult openers;
-
-			if (parameters.hasDescription()) {
-				openers = worker.writeOpeners(file, parameters.getDescription());
-			} else {
-				openers = worker.writeOpeners(file);
-			}
-
-			sendMessage(chatId, openers.getRussian(), keyboardOpeners());
-		} catch (OllamaBaseException | IOException | InterruptedException e) {
-			LOG.warn("Error processing image.", e);
-		}
-
-		file.delete();
 	}
 
 	private void callbackConversation(final Context context, final String queryId, final String callback)
@@ -163,13 +130,48 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private void processText(final Context context, final String text) throws Exception {
-		if (database.getChatState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
+		ChatState chatState = database.getChatState(context.getChatId());
+
+		if (chatState == ChatState.PROFILE_DESCRIPTION) {
 			database.setProfileText(context.getChatId(), text);
 
 			generateProfileDescription(context.getChatId(), text);
 		} else {
-			sendMessage(context.getChatId(), "Not implemented yet.");
+			unknownState(context.getChatId());
 		}
+	}
+
+	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
+		ChatState chatState = database.getChatState(context.getChatId());
+
+		if (chatState == ChatState.GENERATE_OPENER) {
+			PhotoSize photo = getLargestPhoto(photos);
+			OpenerParameters parameters = new OpenerParameters(photo.getFileId(), null);
+			database.setChatOpener(context.getChatId(), parameters);
+
+			generateOpeners(context.getChatId(), parameters);
+		} else {
+			unknownState(context.getChatId());
+		}
+	}
+
+	private void processPhotosDescription(final Context context, final List<PhotoSize> photos, final String description)
+			throws Exception {
+		ChatState chatState = database.getChatState(context.getChatId());
+
+		if (chatState == ChatState.GENERATE_OPENER) {
+			PhotoSize photo = getLargestPhoto(photos);
+			OpenerParameters parameters = new OpenerParameters(photo.getFileId(), description);
+			database.setChatOpener(context.getChatId(), parameters);
+
+			generateOpeners(context.getChatId(), parameters);
+		} else {
+			unknownState(context.getChatId());
+		}
+	}
+
+	private void unknownState(long chatId) throws IOException {
+		sendMessage(chatId, Resource.asText("texts/unknown_state.txt"), keyboardMenu());
 	}
 
 	private void generateProfileDescription(long chatId, String text) {
@@ -182,64 +184,74 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		}
 	}
 
-	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
-		PhotoSize photo = getLargestPhoto(photos);
-		OpenerParameters parameters = new OpenerParameters(photo.getFileId(), null);
-		database.setChatOpener(context.getChatId(), parameters);
+	private void generateOpeners(long chatId, OpenerParameters parameters) {
+		PhotoSize photo = PhotoSize.builder().fileId(parameters.getFileId()).build();
+		File file = downloadPhoto(photo);
 
-		generateOpeners(context.getChatId(), parameters);
-	}
+		if (file == null) {
+			try {
+				sendMessage(chatId, Resource.asText("texts/image_download_fail.txt"), keyboardMenu());
+			} catch (IOException e) {
+				LOG.warn("Error processing image.", e);
+			}
 
-	private void processPhotosDescription(final Context context, final List<PhotoSize> photos, final String description)
-			throws Exception {
-		PhotoSize photo = getLargestPhoto(photos);
-		OpenerParameters parameters = new OpenerParameters(photo.getFileId(), description);
-		database.setChatOpener(context.getChatId(), parameters);
+			return;
+		}
 
-		generateOpeners(context.getChatId(), parameters);
+		file.deleteOnExit();
+
+		try {
+			OpenersResult openers;
+
+			if (parameters.hasDescription()) {
+				openers = worker.writeOpeners(file, parameters.getDescription());
+			} else {
+				openers = worker.writeOpeners(file);
+			}
+
+			sendMessage(chatId, openers.getRussian(), keyboardOpeners());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+
+		file.delete();
 	}
 
 	private ReplyKeyboard keyboardOpeners() {
-		InlineKeyboardRow rowOne = new InlineKeyboardRow();
-		rowOne.add(
+		InlineKeyboardRow redoRow = new InlineKeyboardRow();
+		redoRow.add(
 			InlineKeyboardButton.builder().text("Придумать еще оупенеров").callbackData(CALLBACK_OPENER_REDO).build()
 		);
 
-		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
-
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowOne).keyboardRow(rowTwo).build();
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(redoRow).keyboardRow(menuRow()).build();
 
 		return keyboard;
 	}
 
 	private ReplyKeyboard keyboardProfile() {
-		InlineKeyboardRow rowOne = new InlineKeyboardRow();
-		rowOne.add(
+		InlineKeyboardRow redoRow = new InlineKeyboardRow();
+		redoRow.add(
 			InlineKeyboardButton.builder().text("Предложить еще варианты").callbackData(CALLBACK_PROFILE_REDO).build()
 		);
 
-		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
-		rowTwo.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
-		rowTwo.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
-
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowOne).keyboardRow(rowTwo).build();
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(redoRow).keyboardRow(menuRow()).build();
 
 		return keyboard;
 	}
 
 	private ReplyKeyboard keyboardMenu() {
-		InlineKeyboardRow row = new InlineKeyboardRow();
-		row.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
-		row.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
-		row.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
-
-		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(row).build();
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(menuRow()).build();
 
 		return keyboard;
+	}
+
+	private InlineKeyboardRow menuRow() {
+		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
+		rowTwo.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+
+		return rowTwo;
 	}
 
 	private static PhotoSize getLargestPhoto(final List<PhotoSize> photos) {
