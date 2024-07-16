@@ -29,7 +29,6 @@ import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.data.OpenersResult;
-import ru.snake.date.conversation.worker.data.ProfileDescription;
 import ru.snake.date.conversation.worker.data.ProfileResult;
 
 public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
@@ -123,23 +122,13 @@ public class EasyDateBot extends UpdateConsumer implements LongPollingSingleThre
 		if (database.getState(context.getChatId()) == ChatState.PROFILE_DESCRIPTION) {
 			try {
 				ProfileResult result = worker.profileDescription(text);
-				StringBuilder builder = new StringBuilder();
 
-				for (ProfileDescription description : result.getDescriptions()) {
-					if (!builder.isEmpty()) {
-						builder.append("\n\n");
-					}
-
-					builder.append(String.format("*%s*\n\n%s", description.getHeader(), description.getContent()));
-				}
-
-				sendMessage(context.getChatId(), builder.toString(), createKeyboard());
+				sendMessage(context.getChatId(), result.asString(), createKeyboard());
 			} catch (OllamaBaseException | IOException | InterruptedException e) {
 				LOG.warn("Error processing image.", e);
 
 				return;
 			}
-
 		} else {
 			sendMessage(context.getChatId(), "Not implemented yet.");
 		}
