@@ -16,9 +16,11 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardRow;
 
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
+import ru.snake.bot.easydate.consume.BotClientConsumer;
 import ru.snake.bot.easydate.consume.Context;
 import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
+import ru.snake.bot.easydate.database.OpenerParameters;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.data.OpenersResult;
 import ru.snake.date.conversation.worker.data.ProfileResult;
@@ -30,6 +32,8 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 	private static final String CALLBACK_PROFILE_REDO = ":profile_redo";
 
 	private static final String CALLBACK_OPENER = ":opener";
+
+	private static final String CALLBACK_OPENER_REDO = ":opener_redo";
 
 	private static final String CALLBACK_CONVERSATION = ":conversation";
 
@@ -56,6 +60,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		onCallback(CALLBACK_PROFILE, this::callbackProfile);
 		onCallback(CALLBACK_PROFILE_REDO, this::callbackProfileRedo);
 		onCallback(CALLBACK_OPENER, this::callbackOpener);
+		onCallback(CALLBACK_OPENER_REDO, this::callbackOpenerRedo);
 		onCallback(CALLBACK_CONVERSATION, this::callbackConversation);
 		onCallback(this::callbackInvalid);
 		onAccessDenied(this::accessDenied);
@@ -89,6 +94,47 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		sendMessage(context.getChatId(), "Not implemented yet.");
 	}
 
+	private void callbackOpenerRedo(final Context context, final String queryId, final String callback) {
+		OpenerParameters parameters = database.getChatOpener(context.getChatId());
+
+		if (parameters != null) {
+			generateOpeners(context.getChatId(), parameters);
+		}
+	}
+
+	private void generateOpeners(long chatId, OpenerParameters parameters) {
+		PhotoSize photo = PhotoSize.builder().fileId(parameters.getFileId()).build();
+		File file = downloadPhoto(photo);
+
+		if (file == null) {
+			try {
+				sendMessage(chatId, Resource.asText("image_download_fail.txt"), keyboardMenu());
+			} catch (IOException e) {
+				LOG.warn("Error processing image.", e);
+			}
+
+			return;
+		}
+
+		file.deleteOnExit();
+
+		try {
+			OpenersResult openers;
+
+			if (parameters.hasDescription()) {
+				openers = worker.writeOpeners(file, parameters.getDescription());
+			} else {
+				openers = worker.writeOpeners(file);
+			}
+
+			sendMessage(chatId, openers.getRussian(), keyboardOpeners());
+		} catch (OllamaBaseException | IOException | InterruptedException e) {
+			LOG.warn("Error processing image.", e);
+		}
+
+		file.delete();
+	}
+
 	private void callbackConversation(final Context context, final String queryId, final String callback)
 			throws IOException {
 		database.setChatState(context.getChatId(), ChatState.CONTINUE_CONVERSATION);
@@ -105,7 +151,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 	}
 
 	private void commandStart(final Context context, final String command) throws IOException {
-		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"), keyboardActions());
+		sendMessage(context.getChatId(), Resource.asText("texts/command_start.txt"), keyboardMenu());
 	}
 
 	private void commandHelp(final Context context, final String command) throws IOException {
@@ -138,35 +184,35 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void processPhotos(final Context context, final List<PhotoSize> photos) throws Exception {
 		PhotoSize photo = getLargestPhoto(photos);
-		File file = downloadPhoto(photo);
-		file.deleteOnExit();
+		OpenerParameters parameters = new OpenerParameters(photo.getFileId(), null);
+		database.setChatOpener(context.getChatId(), parameters);
 
-		try {
-			OpenersResult openers = worker.writeOpeners(file);
-
-			sendMessage(context.getChatId(), openers.getRussian());
-		} catch (OllamaBaseException | IOException | InterruptedException e) {
-			LOG.warn("Error processing image.", e);
-		}
-
-		file.delete();
+		generateOpeners(context.getChatId(), parameters);
 	}
 
 	private void processPhotosDescription(final Context context, final List<PhotoSize> photos, final String description)
 			throws Exception {
 		PhotoSize photo = getLargestPhoto(photos);
-		File file = downloadPhoto(photo);
-		file.deleteOnExit();
+		OpenerParameters parameters = new OpenerParameters(photo.getFileId(), description);
+		database.setChatOpener(context.getChatId(), parameters);
 
-		try {
-			OpenersResult openers = worker.writeOpeners(file, description);
+		generateOpeners(context.getChatId(), parameters);
+	}
 
-			sendMessage(context.getChatId(), openers.getRussian());
-		} catch (OllamaBaseException | IOException | InterruptedException e) {
-			LOG.warn("Error processing image.", e);
-		}
+	private ReplyKeyboard keyboardOpeners() {
+		InlineKeyboardRow rowOne = new InlineKeyboardRow();
+		rowOne.add(
+			InlineKeyboardButton.builder().text("Придумать еще оупенеров").callbackData(CALLBACK_OPENER_REDO).build()
+		);
 
-		file.delete();
+		InlineKeyboardRow rowTwo = new InlineKeyboardRow();
+		rowTwo.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());
+		rowTwo.add(InlineKeyboardButton.builder().text("Диалог").callbackData(CALLBACK_CONVERSATION).build());
+
+		ReplyKeyboard keyboard = InlineKeyboardMarkup.builder().keyboardRow(rowOne).keyboardRow(rowTwo).build();
+
+		return keyboard;
 	}
 
 	private ReplyKeyboard keyboardProfile() {
@@ -185,7 +231,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 		return keyboard;
 	}
 
-	private ReplyKeyboard keyboardActions() {
+	private ReplyKeyboard keyboardMenu() {
 		InlineKeyboardRow row = new InlineKeyboardRow();
 		row.add(InlineKeyboardButton.builder().text("Профиль").callbackData(CALLBACK_PROFILE).build());
 		row.add(InlineKeyboardButton.builder().text("Опенер").callbackData(CALLBACK_OPENER).build());

@@ -1,4 +1,4 @@
-package ru.snake.bot.easydate;
+package ru.snake.bot.easydate.consume;
 
 import java.io.File;
 import java.util.Set;
@@ -15,7 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import ru.snake.bot.easydate.consume.UpdateConsumer;
+import ru.snake.bot.easydate.Escaper;
 
 public class BotClientConsumer extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 

@@ -11,9 +11,16 @@ public class MapDBDatabase implements Database {
 
 	private final Map<Long, String> profileTexts;
 
-	private MapDBDatabase(final Map<Long, ChatState> chatStates, final Map<Long, String> profileTexts) {
+	private final Map<Long, OpenerParameters> openerParameters;
+
+	private MapDBDatabase(
+		final Map<Long, ChatState> chatStates,
+		final Map<Long, String> profileTexts,
+		final Map<Long, OpenerParameters> openerParameters
+	) {
 		this.chatStates = chatStates;
 		this.profileTexts = profileTexts;
+		this.openerParameters = openerParameters;
 	}
 
 	@Override
@@ -37,16 +44,30 @@ public class MapDBDatabase implements Database {
 	}
 
 	@Override
+	public void setChatOpener(final long chatId, final OpenerParameters parameters) {
+		openerParameters.put(chatId, parameters);
+	}
+
+	@Override
+	public OpenerParameters getChatOpener(final long chatId) {
+		return openerParameters.get(chatId);
+	}
+
+	@Override
 	public String toString() {
-		return "MapDBDatabase [chatStates=" + chatStates + ", profileTexts=" + profileTexts + "]";
+		return "MapDBDatabase [chatStates=" + chatStates + ", profileTexts=" + profileTexts + ", openerParameters="
+				+ openerParameters + "]";
 	}
 
 	public static Database from(DB db) {
 		Map<Long, ChatState> chatStates = db.hashMap("chatStates", Serializer.LONG, ChatStateSerializer.instance())
 			.createOrOpen();
 		Map<Long, String> profileTexts = db.hashMap("profileTexts", Serializer.LONG, Serializer.STRING).createOrOpen();
+		Map<Long, OpenerParameters> openerParameters = db
+			.hashMap("openerParameters", Serializer.LONG, OpenerParametersSerializer.instance())
+			.createOrOpen();
 
-		return new MapDBDatabase(chatStates, profileTexts);
+		return new MapDBDatabase(chatStates, profileTexts, openerParameters);
 	}
 
 }
