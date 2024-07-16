@@ -19,7 +19,7 @@ mvn package assembly:single
 - [x] Suggest profile description;
 - [x] Generate openers by photo;
 - [x] Generate openers by photo and profile description;
-- [ ] Suggest next message for chat;
+- [x] Suggest next message for chat;
 - [ ] Analyze dialog.
 
 ## Usage
