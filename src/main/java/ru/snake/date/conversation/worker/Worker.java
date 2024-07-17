@@ -2,6 +2,7 @@ package ru.snake.date.conversation.worker;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.Character.UnicodeBlock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -51,9 +52,10 @@ public class Worker {
 
 	public synchronized ProfileResult profileDescription(String text)
 			throws OllamaBaseException, IOException, InterruptedException {
-		String result = textQuery(
+		String description = textQuery(
 			Replacer.replace(Resource.asText("prompts/create_profile.txt"), Map.of("text", text))
 		);
+		String result = toRussian(description);
 		List<ProfileDescription> descriptions = new HeaderTextSplitter("##", "**").split(result);
 
 		return new ProfileResult(descriptions);
@@ -73,7 +75,7 @@ public class Worker {
 				Map.of("image_description", imageDescription, "image_objects", imageObjects)
 			)
 		);
-		String translatedPhrases = textQuery(initialPhrases, Resource.asText("prompts/text_translate.txt"));
+		String translatedPhrases = toRussian(initialPhrases);
 
 		return new OpenersResult(
 			imageDescription,
@@ -104,7 +106,7 @@ public class Worker {
 				)
 			)
 		);
-		String translatedPhrases = textQuery(initialPhrases, Resource.asText("prompts/text_translate.txt"));
+		String translatedPhrases = toRussian(initialPhrases);
 
 		return new OpenersResult(
 			imageDescription,
@@ -116,12 +118,31 @@ public class Worker {
 
 	public synchronized ConverationResult continueConveration(String text)
 			throws OllamaBaseException, IOException, InterruptedException {
-		String result = textQuery(
+		String alternatives = textQuery(
 			Replacer.replace(Resource.asText("prompts/continue_converation.txt"), Map.of("text", text))
 		);
+		String result = toRussian(alternatives);
 		List<String> descriptions = new ListTextSplitter("-", "*", "1", "2", "3", "4", "5").split(result);
 
 		return new ConverationResult(descriptions);
+	}
+
+	private String toRussian(String text) throws OllamaBaseException, IOException, InterruptedException {
+		boolean cyrillic = false;
+
+		for (char ch : text.toCharArray()) {
+			if (UnicodeBlock.of(ch) == UnicodeBlock.CYRILLIC) {
+				cyrillic = true;
+
+				break;
+			}
+		}
+
+		if (cyrillic) {
+			return text;
+		}
+
+		return textQuery(Replacer.replace(Resource.asText("prompts/text_translate.txt"), Map.of("text", text)));
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {
