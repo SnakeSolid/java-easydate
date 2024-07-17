@@ -19,7 +19,7 @@ public class OpenerParametersSerializer extends GroupSerializerObjectArray<Opene
 			out.writeBoolean(true);
 			out.writeUTF(value.getDescription());
 		} else {
-			out.writeBoolean(true);
+			out.writeBoolean(false);
 		}
 	}
 
