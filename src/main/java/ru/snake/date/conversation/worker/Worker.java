@@ -2,7 +2,6 @@ package ru.snake.date.conversation.worker;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.Character.UnicodeBlock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -50,18 +49,18 @@ public class Worker {
 		this.textModelName = textModelName;
 	}
 
-	public synchronized ProfileResult profileDescription(String text)
+	public synchronized ProfileResult profileDescription(String text, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
 		String description = textQuery(
 			Replacer.replace(Resource.asText("prompts/create_profile.txt"), Map.of("text", text))
 		);
-		String result = toRussian(description);
+		String result = translate(description, language);
 		List<ProfileDescription> descriptions = new HeaderTextSplitter("##", "**").split(result);
 
 		return new ProfileResult(descriptions);
 	}
 
-	public synchronized OpenersResult writeOpeners(File file)
+	public synchronized OpenersResult writeOpeners(File file, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
 		LOG.info("Generation openeras for {}", file);
 
@@ -72,10 +71,17 @@ public class Worker {
 		String initialPhrases = textQuery(
 			Replacer.replace(
 				Resource.asText("prompts/text_openers.txt"),
-				Map.of("image_description", imageDescription, "image_objects", imageObjects, "language", "Russian")
+				Map.of(
+					"image_description",
+					imageDescription,
+					"image_objects",
+					imageObjects,
+					"language",
+					language.getName()
+				)
 			)
 		);
-		String translatedPhrases = toRussian(initialPhrases);
+		String translatedPhrases = translate(initialPhrases, language);
 
 		return new OpenersResult(
 			imageDescription,
@@ -85,7 +91,7 @@ public class Worker {
 		);
 	}
 
-	public synchronized OpenersResult writeOpeners(File file, String description)
+	public synchronized OpenersResult writeOpeners(File file, String description, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
 		LOG.info("Generation openeras for {}", file);
 
@@ -104,11 +110,11 @@ public class Worker {
 					"profile_description",
 					description,
 					"language",
-					"Russian"
+					language.getName()
 				)
 			)
 		);
-		String translatedPhrases = toRussian(initialPhrases);
+		String translatedPhrases = translate(initialPhrases, language);
 
 		return new OpenersResult(
 			imageDescription,
@@ -118,33 +124,30 @@ public class Worker {
 		);
 	}
 
-	public synchronized ConverationResult continueConveration(String text)
+	public synchronized ConverationResult continueConveration(String text, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
 		String alternatives = textQuery(
 			Replacer.replace(Resource.asText("prompts/continue_converation.txt"), Map.of("text", text))
 		);
-		String result = toRussian(alternatives);
-		List<String> descriptions = new ListTextSplitter("-", "*", "1", "2", "3", "4", "5").split(result);
+		String result = translate(alternatives, language);
+		List<String> descriptions = new ListTextSplitter("-", "*", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+			.split(result);
 
 		return new ConverationResult(descriptions);
 	}
 
-	private String toRussian(String text) throws OllamaBaseException, IOException, InterruptedException {
-		boolean cyrillic = false;
-
-		for (char ch : text.toCharArray()) {
-			if (UnicodeBlock.of(ch) == UnicodeBlock.CYRILLIC) {
-				cyrillic = true;
-
-				break;
-			}
-		}
-
-		if (cyrillic) {
+	private String translate(String text, Language language)
+			throws OllamaBaseException, IOException, InterruptedException {
+		if (language.isTranslated(text)) {
 			return text;
 		}
 
-		return textQuery(Replacer.replace(Resource.asText("prompts/text_translate.txt"), Map.of("text", text)));
+		return textQuery(
+			Replacer.replace(
+				Resource.asText("prompts/text_translate.txt"),
+				Map.of("text", text, "language", language.getName())
+			)
+		);
 	}
 
 	private String textQuery(String... messages) throws OllamaBaseException, IOException, InterruptedException {

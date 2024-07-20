@@ -1,3 +1,3 @@
 {text}
 
-Переведи этот текст на русский, сохраняя контекст, и сделай стиль менее деловым.
+Translate this text into {language}, maintaining the context, and make the style less businesslike.

@@ -16,6 +16,7 @@ import ru.snake.bot.easydate.cli.BotCommand;
 import ru.snake.bot.easydate.cli.ImageCommand;
 import ru.snake.bot.easydate.cli.RootCommand;
 import ru.snake.bot.easydate.database.Database;
+import ru.snake.date.conversation.worker.Language;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.WorkerSettings;
 import ru.snake.date.conversation.worker.data.OpenersResult;
@@ -39,9 +40,9 @@ public class Main {
 			OpenersResult result;
 
 			if (description == null) {
-				result = worker.writeOpeners(image);
+				result = worker.writeOpeners(image, Language.RUSSIAN);
 			} else {
-				result = worker.writeOpeners(image, description);
+				result = worker.writeOpeners(image, description, Language.RUSSIAN);
 			}
 
 			System.out.println(result.getDescription());

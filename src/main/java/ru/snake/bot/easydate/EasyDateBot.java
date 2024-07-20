@@ -22,6 +22,7 @@ import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
 import ru.snake.bot.easydate.database.OpenerParameters;
 import ru.snake.date.conversation.text.Replacer;
+import ru.snake.date.conversation.worker.Language;
 import ru.snake.date.conversation.worker.Worker;
 import ru.snake.date.conversation.worker.data.ConverationResult;
 import ru.snake.date.conversation.worker.data.OpenersResult;
@@ -202,7 +203,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void generateProfileDescription(long chatId, String text) {
 		try {
-			ProfileResult result = worker.profileDescription(text);
+			ProfileResult result = worker.profileDescription(text, Language.RUSSIAN);
 
 			sendMessage(chatId, result.asString(), keyboardProfile());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
@@ -230,9 +231,9 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 			OpenersResult openers;
 
 			if (parameters.hasDescription()) {
-				openers = worker.writeOpeners(file, parameters.getDescription());
+				openers = worker.writeOpeners(file, parameters.getDescription(), Language.RUSSIAN);
 			} else {
-				openers = worker.writeOpeners(file);
+				openers = worker.writeOpeners(file, Language.RUSSIAN);
 			}
 
 			sendMessage(chatId, openers.getRussian(), keyboardOpeners());
@@ -245,7 +246,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 
 	private void generateConveration(long chatId, String text) {
 		try {
-			ConverationResult result = worker.continueConveration(text);
+			ConverationResult result = worker.continueConveration(text, Language.RUSSIAN);
 
 			sendMessage(chatId, result.asString(), keyboardConversation());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
