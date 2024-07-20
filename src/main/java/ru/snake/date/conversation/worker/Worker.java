@@ -72,7 +72,7 @@ public class Worker {
 		String initialPhrases = textQuery(
 			Replacer.replace(
 				Resource.asText("prompts/text_openers.txt"),
-				Map.of("image_description", imageDescription, "image_objects", imageObjects)
+				Map.of("image_description", imageDescription, "image_objects", imageObjects, "language", "Russian")
 			)
 		);
 		String translatedPhrases = toRussian(initialPhrases);
@@ -102,7 +102,9 @@ public class Worker {
 					"image_objects",
 					imageObjects,
 					"profile_description",
-					description
+					description,
+					"language",
+					"Russian"
 				)
 			)
 		);
