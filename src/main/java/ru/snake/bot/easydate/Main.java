@@ -45,13 +45,7 @@ public class Main {
 				result = worker.writeOpeners(image, description, Language.RUSSIAN);
 			}
 
-			System.out.println(result.getDescription());
-			System.out.println("--- --- --- --- --- --- --- --- --- ---");
-			System.out.println(result.getObjects());
-			System.out.println("--- --- --- --- --- --- --- --- --- ---");
-			System.out.println(result.getEnglish());
-			System.out.println("--- --- --- --- --- --- --- --- --- ---");
-			System.out.println(result.getRussian());
+			System.out.println(result.asString());
 		} catch (OllamaBaseException e) {
 			LOG.error("Failed to communicate with Ollama server.", e);
 		} catch (IOException e) {

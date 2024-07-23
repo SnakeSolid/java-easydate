@@ -236,7 +236,7 @@ public class EasyDateBot extends BotClientConsumer implements LongPollingSingleT
 				openers = worker.writeOpeners(file, Language.RUSSIAN);
 			}
 
-			sendMessage(chatId, openers.getRussian(), keyboardOpeners());
+			sendMessage(chatId, openers.asString(), keyboardOpeners());
 		} catch (OllamaBaseException | IOException | InterruptedException e) {
 			LOG.warn("Error processing image.", e);
 		}

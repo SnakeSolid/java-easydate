@@ -2,7 +2,6 @@ package ru.snake.date.conversation.worker;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +63,7 @@ public class Worker {
 
 	public synchronized OpenersResult writeOpeners(File file, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
-		LOG.info("Generation openeras for {}", file);
+		LOG.info("Generation openers for {}", file);
 
 		checkFiles(file);
 
@@ -84,18 +83,14 @@ public class Worker {
 			)
 		);
 		String translatedPhrases = translate(initialPhrases, language);
+		List<TextList> openers = new ListTextSplitter(Set.of("##", "**"), Set.of("*")).split(translatedPhrases);
 
-		return new OpenersResult(
-			imageDescription,
-			imageObjects,
-			trimLines(initialPhrases),
-			trimLines(translatedPhrases)
-		);
+		return OpenersResult.from(imageDescription, imageObjects, initialPhrases, translatedPhrases, openers);
 	}
 
 	public synchronized OpenersResult writeOpeners(File file, String description, Language language)
 			throws OllamaBaseException, IOException, InterruptedException {
-		LOG.info("Generation openeras for {}", file);
+		LOG.info("Generation openers for {}", file);
 
 		checkFiles(file);
 
@@ -117,13 +112,9 @@ public class Worker {
 			)
 		);
 		String translatedPhrases = translate(initialPhrases, language);
+		List<TextList> openers = new ListTextSplitter(Set.of("##", "**"), Set.of("*")).split(translatedPhrases);
 
-		return new OpenersResult(
-			imageDescription,
-			imageObjects,
-			trimLines(initialPhrases),
-			trimLines(translatedPhrases)
-		);
+		return OpenersResult.from(imageDescription, imageObjects, initialPhrases, translatedPhrases, openers);
 	}
 
 	public synchronized ConverationResult continueConveration(String text, Language language)
@@ -206,49 +197,6 @@ public class Worker {
 		LOG.info("Query result: {}", builder);
 
 		return builder.toString();
-	}
-
-	private static String trimLines(String response) {
-		String[] lines = response.split("\n");
-		int firstIndex = 0;
-		int lastIndex = lines.length;
-
-		while (firstIndex < lines.length) {
-			String line = lines[firstIndex];
-
-			if (line.startsWith("*") || line.startsWith("#")) {
-				break;
-			}
-
-			firstIndex += 1;
-		}
-
-		while (firstIndex < lastIndex) {
-			String line = lines[lastIndex - 1];
-
-			if (line.startsWith("*") || line.startsWith("#")) {
-				break;
-			}
-
-			lastIndex -= 1;
-		}
-
-		List<String> result = new ArrayList<>();
-
-		for (String line : List.of(lines).subList(firstIndex, lastIndex)) {
-			line = line.trim();
-
-			if (line.startsWith("#")) {
-				line = line.replace("#", "").replace("*", "").trim();
-				line = String.format("*%s*", line);
-			} else if (!line.isEmpty()) {
-				line = "\u2022 " + line.replace("*", "").replace("\"", "").trim();
-			}
-
-			result.add(line);
-		}
-
-		return String.join("\n", result);
 	}
 
 	private static void checkFiles(File... files) {
