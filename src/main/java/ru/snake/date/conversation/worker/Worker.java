@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,7 @@ import ru.snake.bot.easydate.Resource;
 import ru.snake.date.conversation.text.HeaderTextSplitter;
 import ru.snake.date.conversation.text.ListTextSplitter;
 import ru.snake.date.conversation.text.Replacer;
+import ru.snake.date.conversation.text.TextList;
 import ru.snake.date.conversation.worker.data.ConverationResult;
 import ru.snake.date.conversation.worker.data.OpenersResult;
 import ru.snake.date.conversation.worker.data.ProfileDescription;
@@ -130,10 +132,12 @@ public class Worker {
 			Replacer.replace(Resource.asText("prompts/continue_converation.txt"), Map.of("text", text))
 		);
 		String result = translate(alternatives, language);
-		List<String> descriptions = new ListTextSplitter("-", "*", "1", "2", "3", "4", "5", "6", "7", "8", "9")
-			.split(result);
+		List<TextList> descriptions = new ListTextSplitter(
+			Set.of("#"),
+			Set.of("*", "1", "2", "3", "4", "5", "6", "7", "8", "9")
+		).split(result);
 
-		return new ConverationResult(descriptions);
+		return ConverationResult.from(descriptions);
 	}
 
 	private String translate(String text, Language language)

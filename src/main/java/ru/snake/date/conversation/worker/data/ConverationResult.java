@@ -1,28 +1,31 @@
 package ru.snake.date.conversation.worker.data;
 
 import java.util.List;
+import java.util.stream.Collectors;
+
+import ru.snake.date.conversation.text.TextList;
 
 public class ConverationResult {
 
-	private final List<String> items;
+	private final List<Paragraph> paragraphs;
 
-	public ConverationResult(final List<String> items) {
-		this.items = items;
+	private ConverationResult(final List<Paragraph> paragraphs) {
+		this.paragraphs = paragraphs;
 	}
 
 	public boolean isEmpty() {
-		return items.isEmpty();
-	}
-
-	public List<String> getItems() {
-		return items;
+		return paragraphs.isEmpty();
 	}
 
 	public String asString() {
 		StringBuilder builder = new StringBuilder();
 
-		for (String item : items) {
-			builder.append(String.format("\u2022 %s\n\n", item));
+		for (Paragraph paragraph : paragraphs) {
+			if (!builder.isEmpty()) {
+				builder.append("\n\n");
+			}
+
+			builder.append(paragraph.asString());
 		}
 
 		return builder.toString();
@@ -30,7 +33,11 @@ public class ConverationResult {
 
 	@Override
 	public String toString() {
-		return "ConverationResult [items=" + items + "]";
+		return "ConverationResult [paragraphs=" + paragraphs + "]";
+	}
+
+	public static ConverationResult from(final List<TextList> descriptions) {
+		return new ConverationResult(descriptions.stream().map(Paragraph::from).collect(Collectors.toList()));
 	}
 
 }

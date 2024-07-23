@@ -2,14 +2,19 @@ package ru.snake.date.conversation.text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import ru.snake.date.conversation.worker.data.ProfileDescription;
 
-public class HeaderTextSplitter {
+public class HeaderTextSplitter extends BaseReplacer {
 
-	private final String[] prefixes;
+	private final Set<String> prefixes;
 
 	public HeaderTextSplitter(String... prefixes) {
+		this.prefixes = Set.of(prefixes);
+	}
+
+	public HeaderTextSplitter(Set<String> prefixes) {
 		this.prefixes = prefixes;
 	}
 
@@ -50,23 +55,11 @@ public class HeaderTextSplitter {
 	}
 
 	private String toHeader(String line) {
-		String result = line;
-
-		for (String prefix : prefixes) {
-			result = result.replace(prefix, "");
-		}
-
-		return result.strip();
+		return trim(prefixes, line);
 	}
 
 	private boolean checkHeader(String line) {
-		for (String prefix : prefixes) {
-			if (line.startsWith(prefix)) {
-				return true;
-			}
-		}
-
-		return false;
+		return check(prefixes, line);
 	}
 
 	@Override
