@@ -124,7 +124,7 @@ public class Worker {
 		);
 		String result = translate(alternatives, language);
 		List<TextList> descriptions = new ListTextSplitter(
-			Set.of("#"),
+			Set.of("##", "**"),
 			Set.of("*", "1", "2", "3", "4", "5", "6", "7", "8", "9")
 		).split(result);
 

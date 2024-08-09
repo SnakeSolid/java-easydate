@@ -1,3 +1,3 @@
 {text}
 
-Translate this text into {language}, maintaining the context, and make the style less businesslike.
+Translate this text into {language}, preserving the context, and make the style less businesslike.
