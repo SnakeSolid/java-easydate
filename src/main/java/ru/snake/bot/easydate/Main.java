@@ -15,11 +15,11 @@ import picocli.CommandLine;
 import ru.snake.bot.easydate.cli.BotCommand;
 import ru.snake.bot.easydate.cli.ImageCommand;
 import ru.snake.bot.easydate.cli.RootCommand;
+import ru.snake.bot.easydate.conversation.worker.Language;
+import ru.snake.bot.easydate.conversation.worker.Worker;
+import ru.snake.bot.easydate.conversation.worker.WorkerSettings;
+import ru.snake.bot.easydate.conversation.worker.data.OpenersResult;
 import ru.snake.bot.easydate.database.Database;
-import ru.snake.date.conversation.worker.Language;
-import ru.snake.date.conversation.worker.Worker;
-import ru.snake.date.conversation.worker.WorkerSettings;
-import ru.snake.date.conversation.worker.data.OpenersResult;
 
 public class Main {
 

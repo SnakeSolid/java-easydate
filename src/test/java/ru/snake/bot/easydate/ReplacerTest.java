@@ -5,7 +5,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import ru.snake.date.conversation.text.Replacer;
+import ru.snake.bot.easydate.conversation.text.Replacer;
 
 public class ReplacerTest {
 

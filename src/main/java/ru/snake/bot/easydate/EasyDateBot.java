@@ -18,15 +18,15 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import io.github.amithkoujalgi.ollama4j.core.exceptions.OllamaBaseException;
 import ru.snake.bot.easydate.consume.BotClientConsumer;
 import ru.snake.bot.easydate.consume.Context;
+import ru.snake.bot.easydate.conversation.text.Replacer;
+import ru.snake.bot.easydate.conversation.worker.Language;
+import ru.snake.bot.easydate.conversation.worker.Worker;
+import ru.snake.bot.easydate.conversation.worker.data.ConverationResult;
+import ru.snake.bot.easydate.conversation.worker.data.OpenersResult;
+import ru.snake.bot.easydate.conversation.worker.data.ProfileResult;
 import ru.snake.bot.easydate.database.ChatState;
 import ru.snake.bot.easydate.database.Database;
 import ru.snake.bot.easydate.database.OpenerParameters;
-import ru.snake.date.conversation.text.Replacer;
-import ru.snake.date.conversation.worker.Language;
-import ru.snake.date.conversation.worker.Worker;
-import ru.snake.date.conversation.worker.data.ConverationResult;
-import ru.snake.date.conversation.worker.data.OpenersResult;
-import ru.snake.date.conversation.worker.data.ProfileResult;
 
 public class EasyDateBot extends BotClientConsumer implements LongPollingSingleThreadUpdateConsumer {
 

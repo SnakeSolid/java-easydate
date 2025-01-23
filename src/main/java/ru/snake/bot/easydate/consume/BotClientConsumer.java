@@ -15,7 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import ru.snake.date.conversation.text.Escaper;
+import ru.snake.bot.easydate.conversation.text.Escaper;
 
 public class BotClientConsumer extends UpdateConsumer implements LongPollingSingleThreadUpdateConsumer {
 
